@@ -24,7 +24,7 @@ A theme aimed to recreate the start menu of Microsoft's unreleased Windows 10X O
 ---
 
 ### Fluent2Inspired Addon
-![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/f2i-start.png)
+![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-start.png)
 
 A refined version of the Fluent2Inspired theme available directly through Windhawk's Start Menu Styler mod's theme selector, with separate versions for both light and dark mode.
 
@@ -33,7 +33,7 @@ A refined version of the Fluent2Inspired theme available directly through Windha
 ---
 
 ### New Start
-![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/New-Start/new-start.png)
+![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/New-Start/new-start.jpg)
 
 Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for older versions of the OS.
 
@@ -44,7 +44,7 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 ## Themes for apps
 
 ### Copilot-WinUI
-![](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Files-WinUI/copilot.png)
+![](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Copilot-WinUI/copilot.png)
 
 
 [Light](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Copilot-WinUI/copilot-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/tree/main/Copilot-WinUI/copilot-dark.json)
