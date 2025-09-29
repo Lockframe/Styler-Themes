@@ -11,6 +11,8 @@ A theme aiming to recreate the appearance of Windows 11's search bar and search 
 
 [Light](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/RTM%20Search/rtm-search-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/RTM%20Search/rtm-search-dark.json)
 
+---
+
 ### Windows 10X
 
 ![](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Windows10X/10x.png)
@@ -19,6 +21,8 @@ A theme aimed to recreate the start menu of Microsoft's unreleased Windows 10X O
 
 [JSON](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/Windows10X/windows10x-start.json)
 
+---
+
 ### Fluent2Inspired Addon
 ![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/f2i-start.png)
 
@@ -26,6 +30,7 @@ A refined version of the Fluent2Inspired theme available directly through Windha
 
 [Light](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-dark.json)
 
+---
 
 ### New Start
 ![](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/New-Start/new-start.png)
@@ -33,6 +38,8 @@ A refined version of the Fluent2Inspired theme available directly through Windha
 Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for older versions of the OS.
 
 [JSON](https://github.com/Lockframe/Styler-Themes/tree/main/Start%20Menu%20Mods/New-Start/new-start.json)
+
+---
 
 ## Themes for apps
 
@@ -56,13 +63,3 @@ A theme meant to remove the Fabric UI elements from the [Files app](https://file
 ![](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Files-WinUI/tabless.png)
 
 [Light](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Files-WinUI/files-tabless-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/Files-WinUI/files-tabless-dark.json)
-
----
-
-### Pixel-Perfect Wino Mail Icons
-![](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/wino-mail/wino.png)
-
-
-Fixes some of [Wino Mail's](https://apps.microsoft.com/detail/9NCRCVJC50WL) glyphs looking blurry and too small. 
-
-[Light](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/wino-mail/wino-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/tree/main/App-Themes/wino-mail/wino-dark.json)
