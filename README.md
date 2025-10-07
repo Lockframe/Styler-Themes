@@ -68,7 +68,7 @@ A variant that hides the tab bar but does not and cannot disable its functionali
 
 ### Fluent2Inspired Files
 
-![](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/f2i-files.png)
+![](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-F2I/f2i-files.png)
 
 A theme aimed to recreate the modernized File Explorer app seen in [Zee-Al-Eid Ahmad's concept](https://x.com/zeealeid/status/1764301467014373774/photo/1) and incorporate other elements from OneDrive web's current design.
 
