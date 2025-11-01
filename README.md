@@ -48,12 +48,23 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Copilot-WinUI/copilot-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/Copilot-WinUI/copilot-dark.json)
 
+>[!TIP]
+>You can download the pre-made Copilot Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Copilot-WinUI/copilot-styler.wh.cpp)
+>To install it, open Windhawk, click "Create a new mod", replace the text in the editor with the content of this file, and then compile.
+
 ---
 
 ### Files-WinUI
 ![](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files.png)
 
 A theme meant to remove the Fabric UI elements from the [Files app](https://files.community/) and implement the proper styling from WinUI's design guidelines.
+
+>[!TIP]
+>You can download the pre-made Files Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-styler.wh.cpp)
+>To install it, open Windhawk, click "Create a new mod", replace the text in the editor with the content of this file, and then compile.
+
+>[!WARNING]
+>You will need to manually edit the theme to ensure the proper glyphs are used for your sidebar scheme for any theme that includes them.
 
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-dark.json)
 
