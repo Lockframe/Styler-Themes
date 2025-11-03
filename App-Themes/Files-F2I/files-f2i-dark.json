@@ -264,9 +264,7 @@
   "controlStyles[78].styles[3]": "Padding=11,0,0,0",
   "controlStyles[86].target": "Microsoft.UI.Xaml.Controls.GridViewItem > Microsoft.UI.Xaml.Controls.Primitives.ListViewItemPresenter#Root > Border",
   "controlStyles[86].styles[0]": "Background:=<SolidColorBrush Color=\"{ThemeResource ControlFillColorDefault}\"/>",
-  "controlStyles[86].styles[1]": "BorderThickness=1",
-  "controlStyles[86].styles[2]": "BorderBrush:=$darkButtonStroke",
-  "controlStyles[86].styles[3]": "Canvas.ZIndex=-1",
+  "controlStyles[86].styles[1]": "Canvas.ZIndex=-1",
   "controlStyles[87].target": "Microsoft.UI.Xaml.Controls.GridViewItem > Microsoft.UI.Xaml.Controls.Primitives.ListViewItemPresenter#Root",
   "controlStyles[3].styles[7]": "Margin=4",
   "controlStyles[87].styles[0]": "MinHeight=0",
@@ -396,5 +394,13 @@
   "controlStyles[108].target": "Microsoft.UI.Xaml.Controls.ContentPresenter#PageContent > Microsoft.UI.Xaml.Controls.Frame > Microsoft.UI.Xaml.Controls.ContentPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Microsoft.UI.Xaml.Controls.Grid#RootGrid > Files.App.Views.Shells.ModernShellPage#RootPage",
   "controlStyles[108].styles[0]": "Margin=0,0,0,-8",
   "controlStyles[109].target": "Microsoft.UI.Xaml.Controls.ContentPresenter#PageContent > Microsoft.UI.Xaml.Controls.Frame > Microsoft.UI.Xaml.Controls.ContentPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Microsoft.UI.Xaml.Controls.Grid#RootGrid > Files.App.Views.Shells.ModernShellPage#RootPage > Grid#RootGrid",
-  "controlStyles[109].styles[0]": "CornerRadius=0"
+  "controlStyles[109].styles[0]": "CornerRadius=0",
+  "controlStyles[110].styles[0]": "Margin=-64,-6,8,0",
+  "controlStyles[110].target": "Grid#GridViewBrowserListedItem > Grid > Border#CloudDriveSyncStatusGlyph",
+  "controlStyles[111].target": "Microsoft.UI.Xaml.Controls.Primitives.Popup#EditPopup",
+  "controlStyles[111].styles[0]": "Margin=-34,7,0,0",
+  "controlStyles[110].styles[1]": "VerticalAlignment=3",
+  "controlStyles[110].styles[2]": "HorizontalAlignment=3",
+  "controlStyles[110].styles[3]": "Width=Auto",
+  "controlStyles[3].styles[8]": "PointerOverBorderBrush:=$darkButtonStroke"
 }

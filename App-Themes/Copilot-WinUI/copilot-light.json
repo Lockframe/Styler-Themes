@@ -340,7 +340,6 @@
   "controlStyles[114].target": "Microsoft.UI.Xaml.Controls.TextBlock#PlaceholderTextContentPresenter",
   "controlStyles[114].styles[0]": "FontWeight=Normal",
   "controlStyles[114].styles[1]": "Foreground:=<SolidColorBrush Color=\"{ThemeResource TextFillColorTertiary}\"/>",
-  "controlStyles[114].styles[2]": "Margin=0,-6,0,0",
   "controlStyles[112].styles[1]": "Margin=4,0,0,0",
   "controlStyles[115].target": "CopilotNative.Core.UX.Markdown.Views.CodeBlockView",
   "controlStyles[115].styles[0]": "CornerRadius=8",
@@ -410,5 +409,16 @@
   "controlStyles[126].styles[2]": "Foreground@Pressed:=<SolidColorBrush Color=\"{ThemeResource TextFillColorPrimary}\"/>",
   "controlStyles[127].styles[2]": "Foreground@Pressed:=<SolidColorBrush Color=\"{ThemeResource TextFillColorPrimary}\"/>",
   "controlStyles[128].styles[2]": "Foreground@Pressed:=<SolidColorBrush Color=\"{ThemeResource TextFillColorPrimary}\"/>",
-  "controlStyles[125].styles[2]": "Foreground@Pressed:=<SolidColorBrush Color=\"{ThemeResource TextFillColorPrimary}\"/>"
+  "controlStyles[125].styles[2]": "Foreground@Pressed:=<SolidColorBrush Color=\"{ThemeResource TextFillColorPrimary}\"/>",
+  "controlStyles[129].target": "Microsoft.UI.Xaml.Controls.AppBarSeparator > Grid > Rectangle",
+  "controlStyles[129].styles[0]": "Width=1",
+  "controlStyles[129].styles[1]": "Fill:=<SolidColorBrush Color=\"{ThemeResource ControlStrokeColorDefault}\"/>",
+  "controlStyles[130].target": "Microsoft.UI.Xaml.Controls.AppBarButton > Grid#Background > ContentPresenter",
+  "controlStyles[130].styles[0]": "Background=#00000000",
+  "controlStyles[131].target": "Microsoft.UI.Xaml.IUIElementOverrides > Grid#Background > Border#OverlayBorder",
+  "controlStyles[131].styles[0]": "Visibility=1",
+  "controlStyles[132].target": "Microsoft.UI.Xaml.IUIElementOverrides > Grid#Background@CommonStates",
+  "controlStyles[132].styles[0]": "Background@PointerOver:=<SolidColorBrush Color=\"{ThemeResource SubtleFillColorSecondary}\"/>",
+  "controlStyles[132].styles[1]": "Background@Pressed:=<SolidColorBrush Color=\"{ThemeResource SubtleFillColorTertiary}\"/>",
+  "controlStyles[114].styles[2]": "Margin=0,-1,0,0"
 }

@@ -5,39 +5,39 @@ A collection of styles I use to modify the Windows 11 shell through Windhawk's s
 
 ### RTM Search
 
-![](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/RTM%20Search/rtm-bar.png)
+![](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/RTM-Search/rtm-bar.png)
 
-A theme aiming to recreate the appearance of Windows 11's search bar and search menu from Windows 11 22H2-23H2.
+A recreation of the appearance of Windows 11's search bar and menu from Windows 11 22H2-23H2.
 
-[Light](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/RTM%20Search/rtm-search-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/RTM%20Search/rtm-search-dark.json)
+[Light](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/RTM-Search/rtm-search-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/RTM-Search/rtm-search-dark.json)
 
 ---
 
 ### Windows 10X
 
-![](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Windows10X/10x.png)
+![](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Windows10X/10x.png)
 
 A recreation of the start menu of Microsoft's cancelled [Windows 10X OS](https://betawiki.net/wiki/Windows_10X).
 
-[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Windows10X/windows10x-start.json)
+[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Windows10X/windows10x-start.json)
 
 ---
 
 ### Fluent2Inspired Addon
-![](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-start.png)
+![](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Fluent2Inspired-Addon/f2i-start.png)
 
 A refined version of the Fluent2Inspired theme available directly through Windhawk's Start Menu Styler mod's theme selector, with separate versions for both light and dark mode.
 
-[Light](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/Fluent2Inspired-Addon/f2i-dark.json)
+[Light](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Fluent2Inspired-Addon/f2i-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Fluent2Inspired-Addon/f2i-dark.json)
 
 ---
 
 ### New Start
-![](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/New-Start/new-start.jpg)
+![](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/New-Start/new-start.jpg)
 
 Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for older versions of the OS, with limitations.
 
-[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/Start%20Menu%20Mods/New-Start/new-start.json)
+[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/New-Start/new-start.json)
 
 ---
 
@@ -49,7 +49,7 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Copilot-WinUI/copilot-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/Copilot-WinUI/copilot-dark.json)
 
 >[!TIP]
->You can download the pre-made Copilot Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Copilot-WinUI/copilot-styler.wh.cpp)
+>You can download the pre-made Copilot Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/pre-made-mods/copilot-styler.wh.cpp)
 >To install it, open Windhawk, click "Create a new mod", replace the text in the editor with the content of this file, and then compile.
 
 ---
@@ -60,11 +60,11 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 A theme meant to remove the Fabric UI elements from the [Files app](https://files.community/) and implement the proper styling from WinUI's design guidelines.
 
 >[!TIP]
->You can download the pre-made Files Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-styler.wh.cpp)
+>You can download the pre-made Files Styler Windhawk mod from [here](https://github.com/Lockframe/Styler-Themes/blob/main/pre-made-mods/files-styler.wh.cpp)
 >To install it, open Windhawk, click "Create a new mod", replace the text in the editor with the content of this file, and then compile.
 
 >[!WARNING]
->You will need to manually edit the theme to ensure the proper glyphs are used for your sidebar scheme for any theme that includes them.
+>You will need to manually edit the theme to ensure the proper glyphs are used for your own sidebar scheme.
 
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-dark.json)
 
