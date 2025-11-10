@@ -1,0 +1,7 @@
+<DrawingImage x:Key="taskbar_bDrawingImage">
+  <DrawingImage.Drawing>
+    <DrawingGroup ClipGeometry="M0,0 V1026 H1026 V0 H0 Z">
+      <GeometryDrawing Brush="#FF005FB8" Geometry="F1 M1026,1026z M0,0z M1025,769C1025,839.692,967.692,897,897,897L129,897C58.308,897,1,839.692,1,769L1,705 1025,705 1025,769z M897,129C967.692,129,1025,186.308,1025,257L1025,641 1,641 1,257C1,186.308,58.308,129,129,129L897,129z" />
+    </DrawingGroup>
+  </DrawingImage.Drawing>
+</DrawingImage>
