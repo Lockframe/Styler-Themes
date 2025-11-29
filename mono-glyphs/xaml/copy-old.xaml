@@ -1,0 +1,7 @@
+<DrawingImage x:Key="edit_copyDrawingImage">
+  <DrawingImage.Drawing>
+    <DrawingGroup ClipGeometry="M0,0 V16 H16 V0 H0 Z">
+      <GeometryDrawing Brush="#FF000000" Geometry="F1 M16,16z M0,0z M6,0A2,2,0,0,0,4,2L4,12A2,2,0,0,0,6,14L12,14A2,2,0,0,0,14,12L14,2A2,2,0,0,0,12,0L6,0z M6,1L12,1A1,1,0,0,1,13,2L13,12A1,1,0,0,1,12,13L6,13A1,1,0,0,1,5,12L5,2A1,1,0,0,1,6,1z M3,2.268C2.402,2.614,2,3.26,2,4L2,12.5A3.5,3.5,0,0,0,5.5,16L10,16C10.74,16,11.387,15.598,11.732,15L5.5,15A2.5,2.5,0,0,1,3,12.5L3,2.27z" />
+    </DrawingGroup>
+  </DrawingImage.Drawing>
+</DrawingImage>
