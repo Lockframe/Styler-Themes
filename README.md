@@ -50,6 +50,9 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 > [!WARNING]  
 > You may need to restart `explorer.exe` to properly apply the 48px-wide taskbar button width style, if you are not using the [Taskbar Height and Icon Size mod](https://windhawk.net/mods/taskbar-icon-size).
 
+> [!TIP]
+> If you are not using the pre-made [taskview on the right mod](https://github.com/Lockframe/Styler-Themes/blob/main/pre-made-mods/ctaskview-on-the-right.wh.cpp), find the target `Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton]` and remove it.
+
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/10X-tb-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/10X-tb-dark.json)
 
 
@@ -62,7 +65,7 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 ![](https://github.com/Lockframe/Styler-Themes/blob/main/notif-center-mods/10X/quick-settings.png)
 ![](https://github.com/Lockframe/Styler-Themes/blob/main/notif-center-mods/10X/notif-center.png)
 
-[Light](https://github.com/Lockframe/Styler-Themes/blob/main/notif-center-mods/10X/10X-notif-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/notif-center-mods/10X/10X-notif-dark.json)
+[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/notif-center-mods/10X/10X-notif.json)
 
 ---
 
