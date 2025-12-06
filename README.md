@@ -19,7 +19,8 @@ A recreation of the appearance of Windows 11's search bar and menu from Windows 
 
 A recreation of the start menu of Microsoft's cancelled [Windows 10X OS](https://betawiki.net/wiki/Windows_10X).
 
-[JSON](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Windows10X/windows10x-start.json)
+[For the new start menu](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Windows10X/10x-start-new.json)
+[For the old start menu](https://github.com/Lockframe/Styler-Themes/blob/main/start-menu-mods/Windows10X/10x-start-old.json)
 
 ---
 
