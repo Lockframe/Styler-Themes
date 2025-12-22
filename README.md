@@ -49,13 +49,17 @@ Recreates the new start menu Microsoft teased for Windows 11's 25H2 update for o
 ![](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/taskbar.png)
 
 > [!WARNING]  
-> You may need to restart `explorer.exe` to properly apply the 48px-wide taskbar button width style, if you are not using the [Taskbar Height and Icon Size mod](https://windhawk.net/mods/taskbar-icon-size).
+> You may need to restart `explorer.exe` to properly apply the 48px-wide taskbar button width style, if you are not using the [Taskbar Height and Icon Size mod](https://windhawk.net/mods/taskbar-icon-size) to set the taskbar button width to 48px.
+
+> [!WARNING]  
+> The unified version of this theme requires the pre-made [Taskbar Height and Icon Size mod](https://windhawk.net/mods/taskbar-content-presenter-injector-mod.wh.cpp) to be manually installed by the user.
 
 > [!TIP]
-> If you are not using the pre-made [taskview on the right mod](https://github.com/Lockframe/Styler-Themes/blob/main/pre-made-mods/ctaskview-on-the-right.wh.cpp), find the target `Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton]` and remove it.
+> If you are not using the pre-made [taskview on the right mod](https://github.com/Lockframe/Styler-Themes/blob/main/pre-made-mods/ctaskview-on-the-right.wh.cpp), find the targets `Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton]` and `Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton]` that only have a custom margin as their styles, and remove them.
 
 [Light](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/10X-tb-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/10X-tb-dark.json)
 
+[Unified](https://github.com/Lockframe/Styler-Themes/blob/main/taskbar-mods/10X/10X-tb-auto.json)
 
 ---
 
