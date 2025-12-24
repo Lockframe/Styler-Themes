@@ -2,7 +2,7 @@
 // @id              taskbar-taskview-button-position-right
 // @name            Task View on the right
 // @description     Moves the Task View button to the right of the open/pinned apps
-// @version         1.1
+// @version         1.2
 // @author          Gemini 3.0, Lockframe
 // @github          https://github.com/Lockframe
 // @include         explorer.exe
@@ -12,9 +12,9 @@
 
 // ==WindhawkModSettings==
 /*
-- customMargin: -48,0
+- customMargin: "-48,0,0,0"
   $name: Custom Margin (Left,Top,Right,Bottom)
-  $description: Sets the margin for the Task View button. Negative margins help collapse the space in the original layout. Default = -48,0
+  $description: Sets the margin for the Task View button. Negative margins help collapse the space in the original layout. Default = -48,0,0,0
 
 - customWidth: 48
   $name: Button Width
@@ -24,9 +24,13 @@
   $name: Button Height
   $description: Height in pixels (set to 0 to use default taskbar height).
 
-- customPadding: 4
+- customPadding: "4"
   $name: Button Padding (Left,Top,Right,Bottom)
   $description: Internal padding for the icon. Default = 4
+
+- startButtonMargin: "-48,0,-1,0"
+  $name: Start Button Margin (Left,Top,Right,Bottom)
+  $description: Adjust the margin of the Start button to correct centering offset. Default = -48,0,-1,0
 */
 // ==/WindhawkModSettings==
 
@@ -60,6 +64,7 @@ struct ModSettings {
     double width;
     double height;
     Thickness padding;
+    Thickness startButtonMargin;
 } g_settings;
 
 std::atomic<bool> g_taskbarViewDllLoaded;
@@ -122,6 +127,11 @@ void LoadSettings() {
     g_settings.height = (double)Wh_GetIntSetting(L"customHeight");
 
     if (g_settings.width <= 0) g_settings.width = 48.0;
+
+    // Parse Start Button Margin
+    PCWSTR startMarginStr = Wh_GetStringSetting(L"startButtonMargin");
+    g_settings.startButtonMargin = ParseThickness(startMarginStr, {0, 0, 0, 0});
+    Wh_FreeStringSetting(startMarginStr);
 }
 
 HWND FindCurrentProcessTaskbarWnd() {
@@ -179,37 +189,66 @@ bool ApplyStyle(XamlRoot xamlRoot) {
 
     if (!taskbarFrameRepeater) return false;
 
-    auto startButton = EnumChildElements(taskbarFrameRepeater, [](FrameworkElement child) {
-        auto childClassName = winrt::get_class_name(child);
-        if (childClassName != L"Taskbar.ExperienceToggleButton") return false;
-        auto automationId = Automation::AutomationProperties::GetAutomationId(child);
-        return automationId == L"TaskViewButton";
-    });
+    // Iterate through children to find buttons of interest
+    int childrenCount = Media::VisualTreeHelper::GetChildrenCount(taskbarFrameRepeater);
+    for (int i = 0; i < childrenCount; i++) {
+        auto element = Media::VisualTreeHelper::GetChild(taskbarFrameRepeater, i).try_as<FrameworkElement>();
+        if (!element) continue;
 
-    if (startButton) {
-        // Enforce dimensions
-        if (!g_unloading) {
-            if (startButton.Width() != g_settings.width) startButton.Width(g_settings.width);
-            if (startButton.MinWidth() != g_settings.width) startButton.MinWidth(g_settings.width);
-        }
+        auto className = winrt::get_class_name(element);
+        if (className != L"Taskbar.ExperienceToggleButton") continue;
 
-        Thickness currentMargin = startButton.Margin();
-        Thickness targetMargin;
+        auto automationId = Automation::AutomationProperties::GetAutomationId(element);
 
-        if (g_unloading) {
-            targetMargin = {0, 0, 0, 0};
-        } else {
-            targetMargin = g_settings.margin;
-        }
+        if (automationId == L"TaskViewButton") {
+            // --- Task View Button Logic ---
+            if (!g_unloading) {
+                if (element.Width() != g_settings.width) element.Width(g_settings.width);
+                if (element.MinWidth() != g_settings.width) element.MinWidth(g_settings.width);
+            }
 
-        // Apply if changed
-        if (currentMargin.Left != targetMargin.Left || 
-            currentMargin.Top != targetMargin.Top || 
-            currentMargin.Right != targetMargin.Right || 
-            currentMargin.Bottom != targetMargin.Bottom) {
-            startButton.Margin(targetMargin);
+            Thickness currentMargin = element.Margin();
+            Thickness targetMargin;
+
+            if (g_unloading) {
+                targetMargin = {0, 0, 0, 0};
+                
+                // Reset position translation on unload
+                auto transform = element.RenderTransform().try_as<Media::TranslateTransform>();
+                if (transform) {
+                    transform.X(0.0);
+                }
+            } else {
+                targetMargin = g_settings.margin;
+            }
+
+            if (currentMargin.Left != targetMargin.Left || 
+                currentMargin.Top != targetMargin.Top || 
+                currentMargin.Right != targetMargin.Right || 
+                currentMargin.Bottom != targetMargin.Bottom) {
+                element.Margin(targetMargin);
+            }
+        } 
+        else if (automationId == L"StartButton") {
+            // --- Start Button Logic ---
+            Thickness currentMargin = element.Margin();
+            Thickness targetMargin;
+
+            if (g_unloading) {
+                targetMargin = {0, 0, 0, 0};
+            } else {
+                targetMargin = g_settings.startButtonMargin;
+            }
+
+            if (currentMargin.Left != targetMargin.Left || 
+                currentMargin.Top != targetMargin.Top || 
+                currentMargin.Right != targetMargin.Right || 
+                currentMargin.Bottom != targetMargin.Bottom) {
+                element.Margin(targetMargin);
+            }
         }
     }
+
     return true;
 }
 
@@ -283,58 +322,92 @@ HRESULT WINAPI IUIElement_Arrange_Hook(void* pThis, winrt::Windows::Foundation::
     if (className != L"Taskbar.ExperienceToggleButton") return original();
 
     auto automationId = Automation::AutomationProperties::GetAutomationId(element);
-    if (automationId != L"TaskViewButton") return original();
+    
+    // --- Task View Button Logic ---
+    if (automationId == L"TaskViewButton") {
+        // 1. Enforce Layout Rect Width (MUST remain synchronous for layout correctness)
+        rect.Width = (float)g_settings.width;
+        if (g_settings.height > 0) rect.Height = (float)g_settings.height;
 
-    // 1. Enforce Width/Height Properties
-    if (element.Width() != g_settings.width) element.Width(g_settings.width);
-    if (element.MinWidth() != g_settings.width) element.MinWidth(g_settings.width);
-    if (g_settings.height > 0 && element.Height() != g_settings.height) element.Height(g_settings.height);
+        // 2. Call Original Arrange
+        HRESULT hr = IUIElement_Arrange_Original(pThis, rect);
 
-    // 2. Enforce Layout Rect Width
-    rect.Width = (float)g_settings.width;
-    if (g_settings.height > 0) rect.Height = (float)g_settings.height;
+        // 3. Async Property Enforcement & Position Correction
+        element.Dispatcher().TryRunAsync(winrt::Windows::UI::Core::CoreDispatcherPriority::Low, [element]() {
+            try {
+                // A. Enforce Properties (Async)
+                if (element.Width() != g_settings.width) element.Width(g_settings.width);
+                if (element.MinWidth() != g_settings.width) element.MinWidth(g_settings.width);
+                if (g_settings.height > 0 && element.Height() != g_settings.height) element.Height(g_settings.height);
 
-    // 3. Call Original Arrange
-    HRESULT hr = IUIElement_Arrange_Original(pThis, rect);
-
-    // 4. Async Position Correction
-    element.Dispatcher().TryRunAsync(winrt::Windows::UI::Core::CoreDispatcherPriority::Low, [element]() {
-        try {
-            auto taskbarFrameRepeater = Media::VisualTreeHelper::GetParent(element).try_as<FrameworkElement>();
-            if (!taskbarFrameRepeater) return;
-
-            double maxX = 0.0;
-            int childrenCount = Media::VisualTreeHelper::GetChildrenCount(taskbarFrameRepeater);
-
-            // Find rightmost visible app
-            for (int i = 0; i < childrenCount; i++) {
-                auto child = Media::VisualTreeHelper::GetChild(taskbarFrameRepeater, i).try_as<FrameworkElement>();
-                if (!child || child == element) continue;
-                if (child.Visibility() != Visibility::Visible) continue;
-
-                auto offset = child.ActualOffset();
-                double rightEdge = offset.x + child.ActualWidth();
-                if (rightEdge > maxX) {
-                    maxX = rightEdge;
+                Thickness currentMargin = element.Margin();
+                Thickness targetMargin = g_settings.margin;
+                if (currentMargin.Left != targetMargin.Left || 
+                    currentMargin.Top != targetMargin.Top || 
+                    currentMargin.Right != targetMargin.Right || 
+                    currentMargin.Bottom != targetMargin.Bottom) {
+                    element.Margin(targetMargin);
                 }
-            }
 
-            double currentX = element.ActualOffset().x;
-            double translationNeeded = maxX - currentX;
+                // B. Enforce Position
+                auto taskbarFrameRepeater = Media::VisualTreeHelper::GetParent(element).try_as<FrameworkElement>();
+                if (!taskbarFrameRepeater) return;
 
-            auto transform = element.RenderTransform().try_as<Media::TranslateTransform>();
-            if (!transform) {
-                transform = Media::TranslateTransform();
-                element.RenderTransform(transform);
-            }
+                double maxX = 0.0;
+                int childrenCount = Media::VisualTreeHelper::GetChildrenCount(taskbarFrameRepeater);
 
-            if (abs(transform.X() - translationNeeded) > 0.1) {
-                transform.X(translationNeeded);
-            }
-        } catch (...) {}
-    });
+                // Find rightmost visible app
+                for (int i = 0; i < childrenCount; i++) {
+                    auto child = Media::VisualTreeHelper::GetChild(taskbarFrameRepeater, i).try_as<FrameworkElement>();
+                    if (!child || child == element) continue;
+                    if (child.Visibility() != Visibility::Visible) continue;
 
-    return hr;
+                    auto offset = child.ActualOffset();
+                    double rightEdge = offset.x + child.ActualWidth();
+                    if (rightEdge > maxX) {
+                        maxX = rightEdge;
+                    }
+                }
+
+                double currentX = element.ActualOffset().x;
+                double translationNeeded = maxX - currentX;
+
+                auto transform = element.RenderTransform().try_as<Media::TranslateTransform>();
+                if (!transform) {
+                    transform = Media::TranslateTransform();
+                    element.RenderTransform(transform);
+                }
+
+                if (abs(transform.X() - translationNeeded) > 0.1) {
+                    transform.X(translationNeeded);
+                }
+            } catch (...) {}
+        });
+
+        return hr;
+    }
+    // --- Start Button Logic ---
+    else if (automationId == L"StartButton") {
+        HRESULT hr = IUIElement_Arrange_Original(pThis, rect);
+
+        // Enforce Margin Async (Prevents crash loop with other mods)
+        element.Dispatcher().TryRunAsync(winrt::Windows::UI::Core::CoreDispatcherPriority::Low, [element]() {
+            try {
+                Thickness currentMargin = element.Margin();
+                Thickness targetMargin = g_settings.startButtonMargin;
+                if (currentMargin.Left != targetMargin.Left || 
+                    currentMargin.Top != targetMargin.Top || 
+                    currentMargin.Right != targetMargin.Right || 
+                    currentMargin.Bottom != targetMargin.Bottom) {
+                    element.Margin(targetMargin);
+                }
+            } catch (...) {}
+        });
+
+        return hr;
+    }
+
+    return original();
 }
 
 using TaskbarCollapsibleLayoutXamlTraits_ArrangeOverride_t = HRESULT(WINAPI*)(void* pThis, void* context, winrt::Windows::Foundation::Size size, winrt::Windows::Foundation::Size* resultSize);
