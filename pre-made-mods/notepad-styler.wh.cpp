@@ -1,8 +1,8 @@
 // ==WindhawkMod==
-// @id              files-styler
-// @name            Files Styler
-// @description     Customize Files app
-// @include         Files.exe
+// @id              notepad-styler
+// @name            Notepad Styler
+// @description     Customize Notepad app
+// @include         Notepad.exe
 // @architecture    x86-64
 // @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -Wl,--export-all-symbols
 // ==/WindhawkMod==

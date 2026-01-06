@@ -2,7 +2,7 @@
 // @id              taskbar-taskview-button-position-right
 // @name            Task View on the right
 // @description     Moves the Task View button to the right of the open/pinned apps
-// @version         1.2
+// @version         1.3
 // @author          Gemini 3.0, Lockframe
 // @github          https://github.com/Lockframe
 // @include         explorer.exe
@@ -24,7 +24,7 @@
   $name: Button Height
   $description: Height in pixels (set to 0 to use default taskbar height).
 
-- customPadding: "4"
+- customPadding: "4,4,4,4"
   $name: Button Padding (Left,Top,Right,Bottom)
   $description: Internal padding for the icon. Default = 4
 
@@ -57,6 +57,8 @@
 #include <winrt/Windows.UI.Xaml.h>
 #include <winrt/base.h>
 
+#include <limits.h>
+
 using namespace winrt::Windows::UI::Xaml;
 
 struct ModSettings {
@@ -66,6 +68,15 @@ struct ModSettings {
     Thickness padding;
     Thickness startButtonMargin;
 } g_settings;
+
+// Capture flags and storage
+bool g_capturedStart = false;
+Thickness g_originalStartMargin = {0,0,0,0};
+
+bool g_capturedTaskView = false;
+Thickness g_originalTaskViewMargin = {0,0,0,0};
+Thickness g_originalTaskViewPadding = {0,0,0,0};
+double g_originalTaskViewWidth = NAN; // Default to Auto
 
 std::atomic<bool> g_taskbarViewDllLoaded;
 std::atomic<bool> g_unloading;
@@ -114,23 +125,24 @@ Thickness ParseThickness(PCWSTR str, Thickness defaultVal) {
 void LoadSettings() {
     // Parse Margin
     PCWSTR marginStr = Wh_GetStringSetting(L"customMargin");
-    g_settings.margin = ParseThickness(marginStr, {-48, 0, -48, 0});
+    // FIX: Change fallback from {-50, 0, -50, 0} to {-48, 0, 0, 0}
+    g_settings.margin = ParseThickness(marginStr, {-48, 0, 0, 0});
     Wh_FreeStringSetting(marginStr);
 
     // Parse Padding
     PCWSTR paddingStr = Wh_GetStringSetting(L"customPadding");
-    g_settings.padding = ParseThickness(paddingStr, {12, 4, 2, 4});
+    g_settings.padding = ParseThickness(paddingStr, {4, 4, 4, 4}); 
     Wh_FreeStringSetting(paddingStr);
 
     // Parse Dimensions
     g_settings.width = (double)Wh_GetIntSetting(L"customWidth");
     g_settings.height = (double)Wh_GetIntSetting(L"customHeight");
-
     if (g_settings.width <= 0) g_settings.width = 48.0;
 
     // Parse Start Button Margin
     PCWSTR startMarginStr = Wh_GetStringSetting(L"startButtonMargin");
-    g_settings.startButtonMargin = ParseThickness(startMarginStr, {0, 0, 0, 0});
+    // FIX: Change fallback from {0, 0, 0, 0} to {-48, 0, -1, 0}
+    g_settings.startButtonMargin = ParseThickness(startMarginStr, {-48, 0, -1, 0});
     Wh_FreeStringSetting(startMarginStr);
 }
 
@@ -205,6 +217,12 @@ bool ApplyStyle(XamlRoot xamlRoot) {
             if (!g_unloading) {
                 if (element.Width() != g_settings.width) element.Width(g_settings.width);
                 if (element.MinWidth() != g_settings.width) element.MinWidth(g_settings.width);
+            } else {
+                // [FIX] Reset Width and MinWidth to Auto/Default on unload
+                // Using quiet_NaN() restores the "Auto" width behavior in XAML
+                double autoWidth = std::numeric_limits<double>::quiet_NaN();
+                element.Width(autoWidth);
+                element.MinWidth(0); 
             }
 
             Thickness currentMargin = element.Margin();
@@ -212,7 +230,6 @@ bool ApplyStyle(XamlRoot xamlRoot) {
 
             if (g_unloading) {
                 targetMargin = {0, 0, 0, 0};
-                
                 // Reset position translation on unload
                 auto transform = element.RenderTransform().try_as<Media::TranslateTransform>();
                 if (transform) {
@@ -370,7 +387,7 @@ HRESULT WINAPI IUIElement_Arrange_Hook(void* pThis, winrt::Windows::Foundation::
                 }
 
                 double currentX = element.ActualOffset().x;
-                double translationNeeded = maxX - currentX;
+                double translationNeeded = maxX - currentX - 2.0; // Ensure there is a 4px gap between the button and the app
 
                 auto transform = element.RenderTransform().try_as<Media::TranslateTransform>();
                 if (!transform) {
@@ -439,8 +456,31 @@ using ExperienceToggleButton_UpdateButtonPadding_t = void(WINAPI*)(void* pThis);
 ExperienceToggleButton_UpdateButtonPadding_t ExperienceToggleButton_UpdateButtonPadding_Original;
 void WINAPI ExperienceToggleButton_UpdateButtonPadding_Hook(void* pThis) {
     ExperienceToggleButton_UpdateButtonPadding_Original(pThis);
-    if (g_unloading) return;
 
+    // [FIX] Convert unloading check to reset logic
+    if (g_unloading) {
+        FrameworkElement toggleButtonElement = nullptr;
+        ((IUnknown**)pThis)[1]->QueryInterface(winrt::guid_of<FrameworkElement>(), winrt::put_abi(toggleButtonElement));
+        if (!toggleButtonElement) return;
+
+        auto panelElement = FindChildByName(toggleButtonElement, L"ExperienceToggleButtonRootPanel").try_as<Controls::Grid>();
+        if (!panelElement) return;
+
+        auto automationId = Automation::AutomationProperties::GetAutomationId(toggleButtonElement);
+        if (automationId == L"TaskViewButton") {
+            // Reset Inner Panel Width to Auto
+            panelElement.Width(std::numeric_limits<double>::quiet_NaN());
+            
+            // Reset Padding. 
+            // Note: We reset to 0 here to ensure the "4px" gap disappears. 
+            // If Windows has a native default (e.g. 2px), this might be slightly tight, 
+            // but it's better than being stuck at 4px.
+            panelElement.Padding({0, 0, 0, 0});
+        }
+        return;
+    }
+
+    // --- Standard Logic Below ---
     FrameworkElement toggleButtonElement = nullptr;
     ((IUnknown**)pThis)[1]->QueryInterface(winrt::guid_of<FrameworkElement>(), winrt::put_abi(toggleButtonElement));
     if (!toggleButtonElement) return;

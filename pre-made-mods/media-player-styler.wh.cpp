@@ -1,8 +1,7 @@
 // ==WindhawkMod==
-// @id              files-styler
-// @name            Files Styler
-// @description     Customize Files app
-// @include         Files.exe
+// @id              media-player-styler
+// @name            Media Player Styler
+// @include         Microsoft.Media.Player.exe
 // @architecture    x86-64
 // @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -Wl,--export-all-symbols
 // ==/WindhawkMod==
@@ -33,21 +32,15 @@
 
 #undef GetCurrentTime
 
-#include <winrt/Microsoft.UI.Xaml.h>
+#include <winrt/Windows.UI.Xaml.h>
 
 // clang-format on
-
-struct {
-    int explorerFrameContainerHeight;
-} g_settings;
-
-int g_themeExplorerFrameContainerHeight;
 
 std::atomic<bool> g_initialized;
 thread_local bool g_initializedForThread;
 
 void ApplyCustomizations(InstanceHandle handle,
-                         winrt::Microsoft::UI::Xaml::FrameworkElement element,
+                         winrt::Windows::UI::Xaml::FrameworkElement element,
                          PCWSTR fallbackClassName);
 void CleanupCustomizations(InstanceHandle handle);
 
@@ -74,21 +67,19 @@ HMODULE GetCurrentModuleHandle() {
 namespace winrt {
     namespace Windows {
         namespace Foundation {}
-    }
-    namespace Microsoft {
         namespace UI::Xaml {}
     }
 }
 
 // alias some long namespaces for convenience
 namespace wf = winrt::Windows::Foundation;
-namespace mux = winrt::Microsoft::UI::Xaml;
+namespace wux = winrt::Windows::UI::Xaml;
 
 #pragma endregion  // winrt_hpp
 
 #pragma region visualtreewatcher_hpp
 
-#include <winrt/Microsoft.UI.Xaml.h>
+#include <winrt/Windows.UI.Xaml.h>
 
 class VisualTreeWatcher : public winrt::implements<VisualTreeWatcher, IVisualTreeServiceCallback2, winrt::non_agile>
 {
@@ -165,10 +156,6 @@ HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation, VisualElement
 {
     Wh_Log(L"========================================");
 
-    if (!g_initializedForThread) {
-        Wh_Log(L"NOTE: Not initialized for thread %u", GetCurrentThreadId());
-    }
-
     switch (mutationType)
     {
     case Add:
@@ -189,7 +176,7 @@ HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation, VisualElement
     if (mutationType == Add)
     {
         const auto inspectable = FromHandle(element.Handle);
-        auto frameworkElement = inspectable.try_as<mux::FrameworkElement>();
+        auto frameworkElement = inspectable.try_as<wux::FrameworkElement>();
         if (frameworkElement)
         {
             Wh_Log(L"FrameworkElement name: %s", frameworkElement.Name().c_str());
@@ -381,7 +368,7 @@ HRESULT InjectWindhawkTAP() noexcept
         return HRESULT_FROM_WIN32(GetLastError());
     }
 
-    const HMODULE wux(GetModuleHandle(L"Microsoft.Internal.FrameworkUdk.dll"));
+    const HMODULE wux(LoadLibraryEx(L"Windows.UI.Xaml.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32));
     if (!wux) [[unlikely]]
     {
         return HRESULT_FROM_WIN32(GetLastError());
@@ -400,7 +387,7 @@ HRESULT InjectWindhawkTAP() noexcept
     for (int i = 0; i < 10000; i++)
     {
         WCHAR connectionName[256];
-        wsprintf(connectionName, L"WinUIVisualDiagConnection%d", i + 1);
+        wsprintf(connectionName, L"VisualDiagConnection%d", i + 1);
 
         hr = ixde(connectionName, GetCurrentProcessId(), L"", location, CLSID_WindhawkTAP, nullptr);
         if (hr != HRESULT_FROM_WIN32(ERROR_NOT_FOUND))
@@ -416,8 +403,6 @@ HRESULT InjectWindhawkTAP() noexcept
 
 // clang-format on
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <windhawk_utils.h>
 
 #include <list>
 #include <optional>
@@ -435,15 +420,22 @@ using namespace std::string_view_literals;
 #include <roapi.h>
 #include <winstring.h>
 
-#include <winrt/Microsoft.UI.Text.h>
-#include <winrt/Microsoft.UI.Xaml.Controls.h>
-#include <winrt/Microsoft.UI.Xaml.Markup.h>
-#include <winrt/Microsoft.UI.Xaml.Media.h>
-#include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.UI.Text.h>
+#include <winrt/Windows.UI.Xaml.Controls.h>
+#include <winrt/Windows.UI.Xaml.Markup.h>
+#include <winrt/Windows.UI.Xaml.Media.h>
+#include <winrt/Windows.UI.Xaml.h>
 
-using namespace winrt::Microsoft::UI::Xaml;
+using namespace winrt::Windows::UI::Xaml;
+
+enum class Target {
+    ShellExperienceHost,
+    ShellHost,  // Win11 24H2.
+};
+
+Target g_target;
 
 // https://stackoverflow.com/a/51274008
 template <auto fn>
@@ -538,8 +530,6 @@ winrt::Windows::Foundation::IInspectable ReadLocalValueWithWorkaround(
     DependencyObject elementDo,
     DependencyProperty property) {
     const auto value = elementDo.ReadLocalValue(property);
-    // TODO: Is this still needed?
-#if 0
     if (value && winrt::get_class_name(value) ==
                      L"Windows.UI.Xaml.Data.BindingExpressionBase") {
         // BindingExpressionBase was observed to be returned for XAML properties
@@ -552,7 +542,6 @@ winrt::Windows::Foundation::IInspectable ReadLocalValueWithWorkaround(
         // GetAnimationBaseValue to get the value.
         return elementDo.GetAnimationBaseValue(property);
     }
-#endif
 
     return value;
 }
@@ -563,12 +552,12 @@ winrt::Windows::Foundation::IInspectable ReadLocalValueWithWorkaround(
 
 #include <initguid.h>
 
-#include <winrt/Microsoft.UI.Xaml.Hosting.h>
+#include <winrt/Windows.UI.Xaml.Hosting.h>
 
 namespace wfn = wf::Numerics;
 namespace wge = winrt::Windows::Graphics::Effects;
-namespace muc = winrt::Microsoft::UI::Composition;
-namespace muxh = mux::Hosting;
+namespace wuc = winrt::Windows::UI::Composition;
+namespace wuxh = wux::Hosting;
 
 template <> inline constexpr winrt::guid winrt::impl::guid_v<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>{
     winrt::impl::guid_v<winrt::Windows::Foundation::IPropertyValue>
@@ -590,19 +579,35 @@ typedef enum MY_D2D1_GAUSSIANBLUR_OPTIMIZATION
 ////////////////////////////////////////////////////////////////////////////////
 // XamlBlurBrush.h
 #include <winrt/Windows.Foundation.Numerics.h>
-#include <winrt/Microsoft.UI.Composition.h>
-#include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Windows.UI.Composition.h>
+#include <winrt/Windows.UI.Xaml.Media.h>
 
-class XamlBlurBrush : public mux::Media::XamlCompositionBrushBaseT<XamlBlurBrush>
+class XamlBlurBrush : public wux::Media::XamlCompositionBrushBaseT<XamlBlurBrush, wux::Media::ISolidColorBrush>
 {
 public:
-	XamlBlurBrush(muc::Compositor compositor, float blurAmount, wfn::float4 tint);
+	XamlBlurBrush(wuc::Compositor compositor, float blurAmount, wfn::float4 tint);
 
 	void OnConnected();
 	void OnDisconnected();
 
+	// The ISolidColorBrush implementation is required for
+	// ActionCenter::FlexibleToastView::OnToastBackgroundBorderBackgroundChanged
+	// in Windows.UI.ActionCenter.dll. If missing, the app crashes while trying
+	// to show the first notification, which results in a crash loop.
+	winrt::Windows::UI::Color Color() const {
+		return winrt::Windows::UI::Color{
+			static_cast<uint8_t>(std::round(m_tint.w * 255.0f)),
+			static_cast<uint8_t>(std::round(m_tint.x * 255.0f)),
+			static_cast<uint8_t>(std::round(m_tint.y * 255.0f)),
+			static_cast<uint8_t>(std::round(m_tint.z * 255.0f)),
+		};
+	}
+	void Color(winrt::Windows::UI::Color const& value) {
+		// Do nothing.
+	}
+
 private:
-	muc::Compositor m_compositor;
+	wuc::Compositor m_compositor;
 	float m_blurAmount;
 	wfn::float4 m_tint;
 };
@@ -1120,7 +1125,7 @@ void GaussianBlurEffect::Name(winrt::hstring name)
 
 ////////////////////////////////////////////////////////////////////////////////
 // XamlBlurBrush.cpp
-XamlBlurBrush::XamlBlurBrush(muc::Compositor compositor, float blurAmount, wfn::float4 tint) :
+XamlBlurBrush::XamlBlurBrush(wuc::Compositor compositor, float blurAmount, wfn::float4 tint) :
 	m_compositor(std::move(compositor)),
 	m_blurAmount(blurAmount),
 	m_tint(tint)
@@ -1133,7 +1138,7 @@ void XamlBlurBrush::OnConnected()
 		auto backdropBrush = m_compositor.CreateBackdropBrush();
 
 		auto blurEffect = winrt::make_self<GaussianBlurEffect>();
-		blurEffect->Source = muc::CompositionEffectSourceParameter(L"backdrop");
+		blurEffect->Source = wuc::CompositionEffectSourceParameter(L"backdrop");
 		blurEffect->BlurAmount = m_blurAmount;
 
 		auto floodEffect = winrt::make_self<FloodEffect>();
@@ -1176,7 +1181,7 @@ void SetOrClearValue(DependencyObject elementDo,
                    std::get_if<XamlBlurBrushParams>(&overrideValue)) {
         if (auto uiElement = elementDo.try_as<UIElement>()) {
             auto compositor =
-                muxh::ElementCompositionPreview::GetElementVisual(uiElement)
+                wuxh::ElementCompositionPreview::GetElementVisual(uiElement)
                     .Compositor();
 
             value = winrt::make<XamlBlurBrush>(std::move(compositor),
@@ -1332,7 +1337,7 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
                 winrt::box_value(winrt::hstring(themeResourceName)));
             if (resource) {
                 if (auto colorBrush =
-                        resource.try_as<mux::Media::SolidColorBrush>()) {
+                        resource.try_as<wux::Media::SolidColorBrush>()) {
                     auto color = colorBrush.Color();
                     tint = {color.R / 255.0f, color.G / 255.0f,
                             color.B / 255.0f, color.A / 255.0f};
@@ -1476,8 +1481,36 @@ Style GetStyleFromXamlSetters(const std::wstring_view type,
     return styleInspectable.as<Style>();
 }
 
+Style GetStyleFromXamlSettersWithFallbackType(
+    const std::wstring_view type,
+    const std::wstring_view fallbackType,
+    const std::wstring_view xamlStyleSetters) {
+    try {
+        return GetStyleFromXamlSetters(type, xamlStyleSetters);
+    } catch (winrt::hresult_error const& ex) {
+        constexpr HRESULT kStowedException = 0x802B000A;
+        if (ex.code() != kStowedException || fallbackType.empty() ||
+            fallbackType == type) {
+            throw;
+        }
+
+        // For some types such as JumpViewUI.JumpListListViewItem, the following
+        // error is returned:
+        //
+        // Error 802B000A: Failed to create a 'System.Type' from the text
+        // 'windhawkstyler:JumpListListViewItem'. [Line: 8 Position: 12]
+        //
+        // Retry with a fallback type, which will allow to at least use the
+        // basic properties.
+        Wh_Log(L"Retrying with fallback type type due to error %08X: %s",
+               ex.code(), ex.message().c_str());
+        return GetStyleFromXamlSetters(fallbackType, xamlStyleSetters);
+    }
+}
+
 const PropertyOverrides& GetResolvedPropertyOverrides(
     const std::wstring_view type,
+    const std::wstring_view fallbackType,
     PropertyOverridesMaybeUnresolved* propertyOverridesMaybeUnresolved) {
     if (const auto* resolved =
             std::get_if<PropertyOverrides>(propertyOverridesMaybeUnresolved)) {
@@ -1524,7 +1557,8 @@ const PropertyOverrides& GetResolvedPropertyOverrides(
                 }
             }
 
-            auto style = GetStyleFromXamlSetters(type, xaml);
+            auto style = GetStyleFromXamlSettersWithFallbackType(
+                type, fallbackType, xaml);
 
             uint32_t i = 0;
             for (const auto& rule : styleRules) {
@@ -1552,6 +1586,7 @@ const PropertyOverrides& GetResolvedPropertyOverrides(
 
 const PropertyValues& GetResolvedPropertyValues(
     const std::wstring_view type,
+    const std::wstring_view fallbackType,
     PropertyValuesMaybeUnresolved* propertyValuesMaybeUnresolved) {
     if (const auto* resolved =
             std::get_if<PropertyValues>(propertyValuesMaybeUnresolved)) {
@@ -1574,7 +1609,8 @@ const PropertyValues& GetResolvedPropertyValues(
                 xaml += L"\" />\n";
             }
 
-            auto style = GetStyleFromXamlSetters(type, xaml);
+            auto style = GetStyleFromXamlSettersWithFallbackType(
+                type, fallbackType, xaml);
 
             for (size_t i = 0; i < propertyValuesStr.size(); i++) {
                 const auto setter = style.Setters().GetAt(i).as<Setter>();
@@ -1641,8 +1677,11 @@ bool TestElementMatcher(FrameworkElement element,
 
     auto elementDo = element.as<DependencyObject>();
 
-    for (const auto& propertyValue :
-         GetResolvedPropertyValues(matcher.type, &matcher.propertyValues)) {
+    for (const auto& propertyValue : GetResolvedPropertyValues(
+             matcher.type,
+             fallbackClassName ? fallbackClassName
+                               : winrt::name_of<FrameworkElement>(),
+             &matcher.propertyValues)) {
         const auto value =
             ReadLocalValueWithWorkaround(elementDo, propertyValue.first);
         if (!value) {
@@ -1741,8 +1780,11 @@ FindElementPropertyOverrides(FrameworkElement element,
 
         auto& overridesForVisualStateGroup = overrides[visualStateGroup];
         for (const auto& [property, valuesPerVisualState] :
-             GetResolvedPropertyOverrides(override.elementMatcher.type,
-                                          &override.propertyOverrides)) {
+             GetResolvedPropertyOverrides(
+                 override.elementMatcher.type,
+                 fallbackClassName ? fallbackClassName
+                                   : winrt::name_of<FrameworkElement>(),
+                 &override.propertyOverrides)) {
             bool propertyInserted = propertiesAdded.insert(property).second;
             if (!propertyInserted) {
                 continue;
@@ -2207,10 +2249,10 @@ StyleRule StyleRuleFromString(std::wstring_view str) {
 std::wstring AdjustTypeName(std::wstring_view type) {
     if (type.find_first_of(L".:") == type.npos) {
         if (type == L"Rectangle") {
-            return L"Microsoft.UI.Xaml.Shapes.Rectangle";
+            return L"Windows.UI.Xaml.Shapes.Rectangle";
         }
 
-        return L"Microsoft.UI.Xaml.Controls." + std::wstring{type};
+        return L"Windows.UI.Xaml.Controls." + std::wstring{type};
     }
 
     static const std::vector<std::pair<std::wstring_view, std::wstring_view>>
@@ -2358,8 +2400,7 @@ bool ProcessSingleResourceVariableFromSettings(int index) {
                            resourceClassName.size() - prefixSize - 1);
     }
 
-    auto resourceTypeName =
-        winrt::Windows::UI::Xaml::Interop::TypeName{resourceClassName};
+    auto resourceTypeName = Interop::TypeName{resourceClassName};
 
     string_setting_unique_ptr valueStringSetting(
         Wh_GetStringSetting(L"resourceVariables[%d].value", index));
@@ -2437,131 +2478,6 @@ void InitializeSettingsAndTap() {
     }
 }
 
-bool IsTargetWindow(HWND hWnd) {
-    WCHAR className[64];
-    if (!GetClassName(hWnd, className, ARRAYSIZE(className))) {
-        return false;
-    }
-
-    return _wcsicmp(className, L"Microsoft.UI.Content.DesktopChildSiteBridge") == 0 ||
-           _wcsicmp(className, L"XamlExplorerHostIslandWindow_WASDK") == 0;
-}
-
-void OnWindowCreated(HWND hWnd, PCSTR funcName) {
-    if (IsTargetWindow(hWnd)) {
-        Wh_Log(L"Initializing - Created window %08X via %S",
-               (DWORD)(ULONG_PTR)hWnd, funcName);
-        InitializeForCurrentThread();
-        InitializeSettingsAndTap();
-    }
-}
-
-using CreateWindowExW_t = decltype(&CreateWindowExW);
-CreateWindowExW_t CreateWindowExW_Original;
-HWND WINAPI CreateWindowExW_Hook(DWORD dwExStyle,
-                                 LPCWSTR lpClassName,
-                                 LPCWSTR lpWindowName,
-                                 DWORD dwStyle,
-                                 int X,
-                                 int Y,
-                                 int nWidth,
-                                 int nHeight,
-                                 HWND hWndParent,
-                                 HMENU hMenu,
-                                 HINSTANCE hInstance,
-                                 PVOID lpParam) {
-    HWND hWnd = CreateWindowExW_Original(dwExStyle, lpClassName, lpWindowName,
-                                         dwStyle, X, Y, nWidth, nHeight,
-                                         hWndParent, hMenu, hInstance, lpParam);
-    if (!hWnd) {
-        return hWnd;
-    }
-
-    OnWindowCreated(hWnd, __FUNCTION__);
-
-    return hWnd;
-}
-
-using CreateWindowInBand_t = HWND(WINAPI*)(DWORD dwExStyle,
-                                           LPCWSTR lpClassName,
-                                           LPCWSTR lpWindowName,
-                                           DWORD dwStyle,
-                                           int X,
-                                           int Y,
-                                           int nWidth,
-                                           int nHeight,
-                                           HWND hWndParent,
-                                           HMENU hMenu,
-                                           HINSTANCE hInstance,
-                                           PVOID lpParam,
-                                           DWORD dwBand);
-CreateWindowInBand_t CreateWindowInBand_Original;
-HWND WINAPI CreateWindowInBand_Hook(DWORD dwExStyle,
-                                    LPCWSTR lpClassName,
-                                    LPCWSTR lpWindowName,
-                                    DWORD dwStyle,
-                                    int X,
-                                    int Y,
-                                    int nWidth,
-                                    int nHeight,
-                                    HWND hWndParent,
-                                    HMENU hMenu,
-                                    HINSTANCE hInstance,
-                                    PVOID lpParam,
-                                    DWORD dwBand) {
-    HWND hWnd = CreateWindowInBand_Original(
-        dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
-        hWndParent, hMenu, hInstance, lpParam, dwBand);
-    if (!hWnd) {
-        return hWnd;
-    }
-
-    OnWindowCreated(hWnd, __FUNCTION__);
-
-    return hWnd;
-}
-
-using CreateWindowInBandEx_t = HWND(WINAPI*)(DWORD dwExStyle,
-                                             LPCWSTR lpClassName,
-                                             LPCWSTR lpWindowName,
-                                             DWORD dwStyle,
-                                             int X,
-                                             int Y,
-                                             int nWidth,
-                                             int nHeight,
-                                             HWND hWndParent,
-                                             HMENU hMenu,
-                                             HINSTANCE hInstance,
-                                             PVOID lpParam,
-                                             DWORD dwBand,
-                                             DWORD dwTypeFlags);
-CreateWindowInBandEx_t CreateWindowInBandEx_Original;
-HWND WINAPI CreateWindowInBandEx_Hook(DWORD dwExStyle,
-                                      LPCWSTR lpClassName,
-                                      LPCWSTR lpWindowName,
-                                      DWORD dwStyle,
-                                      int X,
-                                      int Y,
-                                      int nWidth,
-                                      int nHeight,
-                                      HWND hWndParent,
-                                      HMENU hMenu,
-                                      HINSTANCE hInstance,
-                                      PVOID lpParam,
-                                      DWORD dwBand,
-                                      DWORD dwTypeFlags) {
-    HWND hWnd = CreateWindowInBandEx_Original(
-        dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
-        hWndParent, hMenu, hInstance, lpParam, dwBand, dwTypeFlags);
-    if (!hWnd) {
-        return hWnd;
-    }
-
-    OnWindowCreated(hWnd, __FUNCTION__);
-
-    return hWnd;
-}
-
 using RunFromWindowThreadProc_t = void(WINAPI*)(PVOID parameter);
 
 bool RunFromWindowThread(HWND hWnd,
@@ -2614,7 +2530,177 @@ bool RunFromWindowThread(HWND hWnd,
     return true;
 }
 
-std::vector<HWND> GetTargetWnds() {
+bool RunFromWindowThreadViaPostMessage(HWND hWnd,
+                                       RunFromWindowThreadProc_t proc,
+                                       PVOID procParam) {
+    static const UINT runFromWindowThreadRegisteredMsgViaPostMessage =
+        RegisterWindowMessage(
+            L"Windhawk_RunFromWindowThreadViaPostMessage_" WH_MOD_ID);
+
+    struct RUN_FROM_WINDOW_THREAD_PARAM {
+        RunFromWindowThreadProc_t proc;
+        PVOID procParam;
+        HHOOK hook;
+    };
+
+    DWORD dwThreadId = GetWindowThreadProcessId(hWnd, nullptr);
+    if (dwThreadId == 0) {
+        return false;
+    }
+
+    HHOOK hook = SetWindowsHookEx(
+        WH_GETMESSAGE,
+        [](int nCode, WPARAM wParam, LPARAM lParam) -> LRESULT {
+            if (nCode == HC_ACTION && wParam == PM_REMOVE) {
+                MSG* msg = (MSG*)lParam;
+                if (msg->message ==
+                    runFromWindowThreadRegisteredMsgViaPostMessage) {
+                    auto* param = (RUN_FROM_WINDOW_THREAD_PARAM*)msg->lParam;
+                    if (param) {
+                        param->proc(param->procParam);
+                        UnhookWindowsHookEx(param->hook);
+                        delete param;
+                        msg->lParam = 0;
+                    }
+                }
+            }
+
+            return CallNextHookEx(nullptr, nCode, wParam, lParam);
+        },
+        nullptr, dwThreadId);
+    if (!hook) {
+        return false;
+    }
+
+    auto* param = new RUN_FROM_WINDOW_THREAD_PARAM{
+        .proc = proc,
+        .procParam = procParam,
+        .hook = hook,
+    };
+    if (!PostMessage(hWnd, runFromWindowThreadRegisteredMsgViaPostMessage, 0,
+                     (LPARAM)param)) {
+        UnhookWindowsHookEx(hook);
+        delete param;
+        return false;
+    }
+
+    return true;
+}
+
+void OnWindowCreated(HWND hWnd, LPCWSTR lpClassName, PCSTR funcName) {
+    BOOL bTextualClassName = ((ULONG_PTR)lpClassName & ~(ULONG_PTR)0xffff) != 0;
+
+    switch (g_target) {
+        case Target::ShellExperienceHost:
+            if (bTextualClassName &&
+                _wcsicmp(lpClassName, L"Windows.UI.Core.CoreWindow") == 0) {
+                Wh_Log(L"Initializing - Created core window: %08X via %S",
+                       (DWORD)(ULONG_PTR)hWnd, funcName);
+                InitializeForCurrentThread();
+                InitializeSettingsAndTap();
+            }
+            break;
+
+        case Target::ShellHost:
+            if (bTextualClassName &&
+                _wcsicmp(lpClassName, L"ControlCenterWindow") == 0) {
+                Wh_Log(
+                    L"Initializing - Created ControlCenterWindow: %08X via %S",
+                    (DWORD)(ULONG_PTR)hWnd, funcName);
+                // Initializing at this point is too early and doesn't work.
+                RunFromWindowThreadViaPostMessage(
+                    hWnd,
+                    [](PVOID) {
+                        InitializeForCurrentThread();
+                        InitializeSettingsAndTap();
+                    },
+                    nullptr);
+            }
+            break;
+    }
+}
+
+using CreateWindowInBand_t = HWND(WINAPI*)(DWORD dwExStyle,
+                                           LPCWSTR lpClassName,
+                                           LPCWSTR lpWindowName,
+                                           DWORD dwStyle,
+                                           int X,
+                                           int Y,
+                                           int nWidth,
+                                           int nHeight,
+                                           HWND hWndParent,
+                                           HMENU hMenu,
+                                           HINSTANCE hInstance,
+                                           PVOID lpParam,
+                                           DWORD dwBand);
+CreateWindowInBand_t CreateWindowInBand_Original;
+HWND WINAPI CreateWindowInBand_Hook(DWORD dwExStyle,
+                                    LPCWSTR lpClassName,
+                                    LPCWSTR lpWindowName,
+                                    DWORD dwStyle,
+                                    int X,
+                                    int Y,
+                                    int nWidth,
+                                    int nHeight,
+                                    HWND hWndParent,
+                                    HMENU hMenu,
+                                    HINSTANCE hInstance,
+                                    PVOID lpParam,
+                                    DWORD dwBand) {
+    HWND hWnd = CreateWindowInBand_Original(
+        dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
+        hWndParent, hMenu, hInstance, lpParam, dwBand);
+    if (!hWnd) {
+        return hWnd;
+    }
+
+    OnWindowCreated(hWnd, lpClassName, __FUNCTION__);
+
+    return hWnd;
+}
+
+using CreateWindowInBandEx_t = HWND(WINAPI*)(DWORD dwExStyle,
+                                             LPCWSTR lpClassName,
+                                             LPCWSTR lpWindowName,
+                                             DWORD dwStyle,
+                                             int X,
+                                             int Y,
+                                             int nWidth,
+                                             int nHeight,
+                                             HWND hWndParent,
+                                             HMENU hMenu,
+                                             HINSTANCE hInstance,
+                                             PVOID lpParam,
+                                             DWORD dwBand,
+                                             DWORD dwTypeFlags);
+CreateWindowInBandEx_t CreateWindowInBandEx_Original;
+HWND WINAPI CreateWindowInBandEx_Hook(DWORD dwExStyle,
+                                      LPCWSTR lpClassName,
+                                      LPCWSTR lpWindowName,
+                                      DWORD dwStyle,
+                                      int X,
+                                      int Y,
+                                      int nWidth,
+                                      int nHeight,
+                                      HWND hWndParent,
+                                      HMENU hMenu,
+                                      HINSTANCE hInstance,
+                                      PVOID lpParam,
+                                      DWORD dwBand,
+                                      DWORD dwTypeFlags) {
+    HWND hWnd = CreateWindowInBandEx_Original(
+        dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
+        hWndParent, hMenu, hInstance, lpParam, dwBand, dwTypeFlags);
+    if (!hWnd) {
+        return hWnd;
+    }
+
+    OnWindowCreated(hWnd, lpClassName, __FUNCTION__);
+
+    return hWnd;
+}
+
+std::vector<HWND> GetCoreWnds() {
     struct ENUM_WINDOWS_PARAM {
         std::vector<HWND>* hWnds;
     };
@@ -2631,8 +2717,24 @@ std::vector<HWND> GetTargetWnds() {
                 return TRUE;
             }
 
-            if (IsTargetWindow(hWnd)) {
-                param.hWnds->push_back(hWnd);
+            WCHAR szClassName[32];
+            if (GetClassName(hWnd, szClassName, ARRAYSIZE(szClassName)) == 0) {
+                return TRUE;
+            }
+
+            switch (g_target) {
+                case Target::ShellExperienceHost:
+                    if (_wcsicmp(szClassName, L"Windows.UI.Core.CoreWindow") ==
+                        0) {
+                        param.hWnds->push_back(hWnd);
+                    }
+                    break;
+
+                case Target::ShellHost:
+                    if (_wcsicmp(szClassName, L"ControlCenterWindow") == 0) {
+                        param.hWnds->push_back(hWnd);
+                    }
+                    break;
             }
 
             return TRUE;
@@ -2642,66 +2744,9 @@ std::vector<HWND> GetTargetWnds() {
     return hWnds;
 }
 
-using XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_t =
-    HRESULT(WINAPI*)(void* pThis, SIZE* size);
-XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_t
-    XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Original;
-HRESULT WINAPI
-XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Hook(void* pThis,
-                                                           SIZE* size) {
-    Wh_Log(L">");
-
-    HRESULT ret =
-        XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Original(pThis,
-                                                                       size);
-
-    int explorerFrameContainerHeight = g_settings.explorerFrameContainerHeight;
-    if (!explorerFrameContainerHeight) {
-        explorerFrameContainerHeight = g_themeExplorerFrameContainerHeight;
-    }
-
-    if (SUCCEEDED(ret) && explorerFrameContainerHeight) {
-        int originalCy = size->cy;
-        size->cy = MulDiv(size->cy, explorerFrameContainerHeight, 136);
-        Wh_Log(L"%d -> %d", originalCy, size->cy);
-    }
-
-    return ret;
-}
-
-bool HookWindowsUIFileExplorerSymbols() {
-    HMODULE module = LoadLibraryEx(L"Windows.UI.FileExplorer.dll", nullptr,
-                                   LOAD_LIBRARY_SEARCH_SYSTEM32);
-    if (!module) {
-        Wh_Log(L"Couldn't load Windows.UI.FileExplorer.dll");
-        return false;
-    }
-
-    // Windows.UI.FileExplorer.dll
-    WindhawkUtils::SYMBOL_HOOK hooks[] = {
-        {
-            {LR"(public: virtual long __cdecl XamlIslandViewAdapter::get_DesiredSizeInPhysicalPixels(struct tagSIZE *))"},
-            &XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Original,
-            XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Hook,
-        },
-    };
-
-    if (!HookSymbols(module, hooks, ARRAYSIZE(hooks))) {
-        Wh_Log(L"HookSymbols failed");
-        return false;
-    }
-
-    return true;
-}
-
 PTP_TIMER g_statsTimer;
 
 bool StartStatsTimer() {
-    static constexpr WCHAR kStatsBaseUrl[] =
-        L"https://github.com/ramensoftware/"
-        L"windows-11-file-explorer-styling-guide/"
-        L"releases/download/stats-v1/";
-
     ULONGLONG lastStatsTime = 0;
     Wh_GetBinaryValue(L"statsTimerLastTime", &lastStatsTime,
                       sizeof(lastStatsTime));
@@ -2734,53 +2779,36 @@ bool StartStatsTimer() {
         [](PTP_CALLBACK_INSTANCE, PVOID, PTP_TIMER) {
             Wh_Log(L">");
 
-            string_setting_unique_ptr themeName(Wh_GetStringSetting(L"theme"));
-            if (!*themeName.get()) {
-                return;
-            }
-
-            HANDLE mutex =
-                CreateMutex(nullptr, FALSE, L"WindhawkStats_" WH_MOD_ID);
-            if (mutex) {
-                WaitForSingleObject(mutex, INFINITE);
-            }
-
-            ULONGLONG lastStatsTime = 0;
-            Wh_GetBinaryValue(L"statsTimerLastTime", &lastStatsTime,
-                              sizeof(lastStatsTime));
-
             FILETIME currentTimeFt;
             GetSystemTimeAsFileTime(&currentTimeFt);
             ULONGLONG currentTime =
                 ((ULONGLONG)currentTimeFt.dwHighDateTime << 32) |
                 currentTimeFt.dwLowDateTime;
 
-            const WH_URL_CONTENT* content = nullptr;
-            if (currentTime - lastStatsTime >= k10Minutes) {
-                Wh_SetBinaryValue(L"statsTimerLastTime", &currentTime,
-                                  sizeof(currentTime));
+            Wh_SetBinaryValue(L"statsTimerLastTime", &currentTime,
+                              sizeof(currentTime));
 
-                std::wstring themeNameEscaped = themeName.get();
-                std::replace(themeNameEscaped.begin(), themeNameEscaped.end(),
-                             L' ', L'_');
-
-                std::wstring statsUrl = kStatsBaseUrl;
-                statsUrl += themeNameEscaped;
-                statsUrl += L".txt";
-
-                Wh_Log(L"Submitting stats to %s", statsUrl.c_str());
-
-                content = Wh_GetUrlContent(statsUrl.c_str(), nullptr);
-            } else {
-                Wh_Log(L"Skipping, last submission %llu seconds ago",
-                       (currentTime - lastStatsTime) / 10000000LL);
+            string_setting_unique_ptr themeName(Wh_GetStringSetting(L"theme"));
+            if (!*themeName.get()) {
+                return;
             }
 
-            if (mutex) {
-                ReleaseMutex(mutex);
-                CloseHandle(mutex);
-            }
+            std::wstring themeNameEscaped = themeName.get();
+            std::replace(themeNameEscaped.begin(), themeNameEscaped.end(), L' ',
+                         L'_');
 
+            std::wstring statsUrl =
+                L"https://github.com/ramensoftware/"
+                L"windows-11-notification-center-styling-guide/releases/"
+                L"download/"
+                L"stats-v1/";
+            statsUrl += themeNameEscaped;
+            statsUrl += L".txt";
+
+            Wh_Log(L"Submitting stats to %s", statsUrl.c_str());
+
+            const WH_URL_CONTENT* content =
+                Wh_GetUrlContent(statsUrl.c_str(), nullptr);
             if (!content) {
                 Wh_Log(L"Failed to get stats content");
                 return;
@@ -2818,18 +2846,30 @@ void StopStatsTimer() {
     }
 }
 
-void LoadSettings() {
-    g_settings.explorerFrameContainerHeight =
-        Wh_GetIntSetting(L"explorerFrameContainerHeight");
-}
-
 BOOL Wh_ModInit() {
     Wh_Log(L">");
 
-    LoadSettings();
+    g_target = Target::ShellExperienceHost;
 
-    Wh_SetFunctionHook((void*)CreateWindowExW, (void*)CreateWindowExW_Hook,
-                       (void**)&CreateWindowExW_Original);
+    WCHAR moduleFilePath[MAX_PATH];
+    switch (
+        GetModuleFileName(nullptr, moduleFilePath, ARRAYSIZE(moduleFilePath))) {
+        case 0:
+        case ARRAYSIZE(moduleFilePath):
+            Wh_Log(L"GetModuleFileName failed");
+            break;
+
+        default:
+            if (PCWSTR moduleFileName = wcsrchr(moduleFilePath, L'\\')) {
+                moduleFileName++;
+                if (_wcsicmp(moduleFileName, L"ShellHost.exe") == 0) {
+                    g_target = Target::ShellHost;
+                }
+            } else {
+                Wh_Log(L"GetModuleFileName returned an unsupported path");
+            }
+            break;
+    }
 
     HMODULE user32Module =
         LoadLibraryEx(L"user32.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -2851,9 +2891,9 @@ BOOL Wh_ModInit() {
         }
     }
 
-    HookWindowsUIFileExplorerSymbols();
-
-    StartStatsTimer();
+    if (g_target == Target::ShellExperienceHost) {
+        StartStatsTimer();
+    }
 
     return TRUE;
 }
@@ -2861,15 +2901,16 @@ BOOL Wh_ModInit() {
 void Wh_ModAfterInit() {
     Wh_Log(L">");
 
-    auto hTargetWnds = GetTargetWnds();
-    for (auto hTargetWnd : hTargetWnds) {
-        Wh_Log(L"Initializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
+    bool initialize = false;
+
+    for (auto hCoreWnd : GetCoreWnds()) {
+        Wh_Log(L"Initializing for %08X", (DWORD)(ULONG_PTR)hCoreWnd);
         RunFromWindowThread(
-            hTargetWnd, [](PVOID) { InitializeForCurrentThread(); }, nullptr);
+            hCoreWnd, [](PVOID) { InitializeForCurrentThread(); }, nullptr);
+        initialize = true;
     }
 
-    if (hTargetWnds.size() > 0) {
-        Wh_Log(L"Initializing - Found target windows");
+    if (initialize) {
         InitializeSettingsAndTap();
     }
 }
@@ -2877,15 +2918,16 @@ void Wh_ModAfterInit() {
 void Wh_ModUninit() {
     Wh_Log(L">");
 
-    StopStatsTimer();
+    if (g_target == Target::ShellExperienceHost) {
+        StopStatsTimer();
+    }
 
     UninitializeSettingsAndTap();
 
-    auto hTargetWnds = GetTargetWnds();
-    for (auto hTargetWnd : hTargetWnds) {
-        Wh_Log(L"Uninitializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
+    for (auto hCoreWnd : GetCoreWnds()) {
+        Wh_Log(L"Uninitializing for %08X", (DWORD)(ULONG_PTR)hCoreWnd);
         RunFromWindowThread(
-            hTargetWnd, [](PVOID) { UninitializeForCurrentThread(); }, nullptr);
+            hCoreWnd, [](PVOID) { UninitializeForCurrentThread(); }, nullptr);
     }
 }
 
@@ -2894,22 +2936,21 @@ void Wh_ModSettingsChanged() {
 
     UninitializeSettingsAndTap();
 
-    auto hTargetWnds = GetTargetWnds();
-    for (auto hTargetWnd : hTargetWnds) {
-        Wh_Log(L"Reinitializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
+    bool initialize = false;
+
+    for (auto hCoreWnd : GetCoreWnds()) {
+        Wh_Log(L"Reinitializing for %08X", (DWORD)(ULONG_PTR)hCoreWnd);
         RunFromWindowThread(
-            hTargetWnd,
+            hCoreWnd,
             [](PVOID) {
                 UninitializeForCurrentThread();
                 InitializeForCurrentThread();
             },
             nullptr);
+        initialize = true;
     }
 
-    if (hTargetWnds.size() > 0) {
-        Wh_Log(L"Reinitializing - Found target windows");
+    if (initialize) {
         InitializeSettingsAndTap();
     }
-
-    LoadSettings();
 }

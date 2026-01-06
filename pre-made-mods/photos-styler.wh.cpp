@@ -1,8 +1,8 @@
 // ==WindhawkMod==
-// @id              files-styler
-// @name            Files Styler
-// @description     Customize Files app
-// @include         Files.exe
+// @id              photos-styler
+// @name            Photos Styler
+// @description     Customize Photos app
+// @include         Photos.exe
 // @architecture    x86-64
 // @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -Wl,--export-all-symbols
 // ==/WindhawkMod==
@@ -2443,7 +2443,7 @@ bool IsTargetWindow(HWND hWnd) {
         return false;
     }
 
-    return _wcsicmp(className, L"Microsoft.UI.Content.DesktopChildSiteBridge") == 0 ||
+    return _wcsicmp(className, L"WinUIDesktopWin32WindowClass") == 0 ||
            _wcsicmp(className, L"XamlExplorerHostIslandWindow_WASDK") == 0;
 }
 

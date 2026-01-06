@@ -3,7 +3,8 @@
 // @name            Taskbar ContentPresenter Injector
 // @description     Injects a ContentPresenter into Taskbar.TaskListLabeledButtonPanel and Taskbar.TaskListButtonPanel
 // @version         1.1
-// @author          Gemini 3.0, Lockframe
+// @author          Lockframe
+// @github          https://github.com/Lockframe
 // @include         explorer.exe
 // @architecture    x86-64
 // @compilerOptions -lole32 -loleaut32 -lruntimeobject
@@ -13,9 +14,9 @@
 /*
 # Taskbar ContentPresenter Injector
 
-This mod injects a ContentPresenter named CustomInjectedPresenter into every Taskbar.TaskListLabeledButtonPanel and Taskbar.TaskListButtonPanel. It enables deeper customization when used with the Windows 11 Taskbar Styler.
+This mod acts as an addon to the [Windows 11 Taskbar Styler mod](https://windhawk.net/mods/windows-11-taskbar-styler), enabling deeper customization of the taskbar, such as replacing icons with glyphs, by injecting a `ContentPresenter` named `CustomInjectedPresenter` into every `Taskbar.TaskListLabeledButtonPanel` and `Taskbar.TaskListButtonPanel`.
 
-Injected path examples:
+## Path to the injected element:
 
 ```Taskbar.TaskListButton > Taskbar.TaskListLabeledButtonPanel > Windows.UI.Xaml.Controls.ContentPresenter#CustomInjectedPresenter```
 
