@@ -1,47 +1,82 @@
 // ==WindhawkMod==
 // @id              files-styler
 // @name            Files Styler
-// @description     Customize Files app
+// @description     Customize the Files app
+// @version         1.1
+// @author          Lockframe
 // @include         Files.exe
 // @architecture    x86-64
-// @compilerOptions -lcomctl32 -lole32 -loleaut32 -lruntimeobject -Wl,--export-all-symbols
+// @compilerOptions -lcomctl32 -ldwmapi -lole32 -loleaut32 -lruntimeobject -Wl,--export-all-symbols
 // ==/WindhawkMod==
 
 // ==WindhawkModSettings==
 /*
+- styleConstants: [""]
+  $name: Style constants
+  $description: >-
+    Some themes support style constants for customization, such as colors. Refer
+    to the theme page for available constants. For technical details, refer to
+    the mod description.
 - controlStyles:
   - - target: ""
       $name: Target
     - styles: [""]
       $name: Styles
   $name: Control styles
-- styleConstants: [""]
-  $name: Style constants
-- resourceVariables:
-  - - variableKey: ""
-      $name: Variable key
-    - value: ""
-      $name: Value
+- themeResourceVariables: [""]
   $name: Resource variables
+  $description: >-
+    Use "Key=Value" to override an existing resource with a new value.
+
+    Use "Key@Dark=Value" or "Key@Light=Value" to define theme-aware resources
+    that can be referenced with {ThemeResource Key} in styles.
+
+    The ":=" syntax can be used to set a XAML value. For details, refer to the
+    mod description.
+- xamlDiagnosticsHandling: alert
+  $name: XAML diagnostics consumer handling
+  $description: >-
+    How to handle other programs (e.g. ExplorerBlurMica) that try to use XAML
+    diagnostics. There can only be one consumer at a time. Block will prevent
+    other programs from using it, which might break them. Allow will let them
+    use it, which might break this mod.
+  $options:
+  - alert: Alert (prompt before blocking)
+  - block: Block other consumers
+  - allow: Allow other consumers
 */
 // ==/WindhawkModSettings==
 
 #include <xamlom.h>
 
 #include <atomic>
+#include <optional>
 #include <vector>
 
 #undef GetCurrentTime
 
 #include <winrt/Microsoft.UI.Xaml.h>
 
-// clang-format on
+struct ThemeTargetStyles {
+    PCWSTR target;
+    std::vector<PCWSTR> styles;
+};
+
+struct Theme {
+    std::vector<ThemeTargetStyles> targetStyles;
+    std::vector<PCWSTR> styleConstants;
+    std::vector<PCWSTR> themeResourceVariables;
+};
+
+enum class XamlDiagnosticsHandling {
+    kAlert,
+    kBlock,
+    kAllow,
+};
 
 struct {
-    int explorerFrameContainerHeight;
+    XamlDiagnosticsHandling xamlDiagnosticsHandling;
 } g_settings;
-
-int g_themeExplorerFrameContainerHeight;
 
 std::atomic<bool> g_initialized;
 thread_local bool g_initializedForThread;
@@ -158,16 +193,15 @@ VisualTreeWatcher::~VisualTreeWatcher()
 void VisualTreeWatcher::UnadviseVisualTreeChange()
 {
     Wh_Log(L"UnadviseVisualTreeChange VisualTreeWatcher");
-    winrt::check_hresult(m_XamlDiagnostics.as<IVisualTreeService3>()->UnadviseVisualTreeChange(this));
+    HRESULT hr = m_XamlDiagnostics.as<IVisualTreeService3>()->UnadviseVisualTreeChange(this);
+    if (FAILED(hr)) {
+        Wh_Log(L"UnadviseVisualTreeChange failed with error %08X", hr);
+    }
 }
 
 HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation, VisualElement element, VisualMutationType mutationType) try
 {
     Wh_Log(L"========================================");
-
-    if (!g_initializedForThread) {
-        Wh_Log(L"NOTE: Not initialized for thread %u", GetCurrentThreadId());
-    }
 
     switch (mutationType)
     {
@@ -185,6 +219,11 @@ HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation, VisualElement
     }
 
     Wh_Log(L"Element type: %s", element.Type);
+
+    if (!g_initializedForThread) {
+        Wh_Log(L"Not initialized for thread %u", GetCurrentThreadId());
+        return S_OK;
+    }
 
     if (mutationType == Add)
     {
@@ -363,6 +402,8 @@ _Use_decl_annotations_ STDAPI DllCanUnloadNow(void)
 
 #pragma region api_cpp
 
+bool g_inInjectWindhawkTAP = false;
+
 using PFN_INITIALIZE_XAML_DIAGNOSTICS_EX = decltype(&InitializeXamlDiagnosticsEx);
 
 HRESULT InjectWindhawkTAP() noexcept
@@ -396,6 +437,8 @@ HRESULT InjectWindhawkTAP() noexcept
     // I didn't find a better way than trying many connections until one works.
     // Reference:
     // https://github.com/microsoft/microsoft-ui-xaml/blob/d74a0332cf0d5e58f12eddce1070fa7a79b4c2db/src/dxaml/xcp/dxaml/lib/DXamlCore.cpp#L2782
+    g_inInjectWindhawkTAP = true;
+
     HRESULT hr;
     for (int i = 0; i < 10000; i++)
     {
@@ -409,6 +452,8 @@ HRESULT InjectWindhawkTAP() noexcept
         }
     }
 
+    g_inInjectWindhawkTAP = false;
+
     return hr;
 }
 
@@ -419,8 +464,13 @@ HRESULT InjectWindhawkTAP() noexcept
 
 #include <windhawk_utils.h>
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <list>
+#include <mutex>
 #include <optional>
+#include <random>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -431,19 +481,37 @@ HRESULT InjectWindhawkTAP() noexcept
 
 using namespace std::string_view_literals;
 
+#include <initguid.h>
+
 #include <commctrl.h>
+#include <d2d1_1.h>
+#include <dwmapi.h>
 #include <roapi.h>
+#include <windows.graphics.effects.h>
 #include <winstring.h>
 
+#include <winrt/Microsoft.UI.Composition.h>
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Text.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Markup.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Graphics.Effects.h>
+#include <winrt/Windows.Networking.Connectivity.h>
+#include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.UI.ViewManagement.h>
 
 using namespace winrt::Microsoft::UI::Xaml;
+
+namespace wge = winrt::Windows::Graphics::Effects;
+namespace muc = winrt::Microsoft::UI::Composition;
+namespace muxh = mux::Hosting;
+namespace awge = ABI::Windows::Graphics::Effects;
 
 // https://stackoverflow.com/a/51274008
 template <auto fn>
@@ -484,7 +552,13 @@ using PropertyOverridesUnresolved = std::vector<StyleRule>;
 
 struct XamlBlurBrushParams {
     float blurAmount;
-    wf::Numerics::float4 tint;
+    winrt::Windows::UI::Color tint;
+    std::optional<uint8_t> tintOpacity;
+    std::wstring tintThemeResourceKey;  // Empty if not from ThemeResource
+    std::optional<float> tintLuminosityOpacity;
+    std::optional<float> tintSaturation;
+    std::optional<float> noiseOpacity;
+    std::optional<float> noiseDensity;
 };
 
 using PropertyOverrideValue =
@@ -510,6 +584,7 @@ thread_local std::vector<ElementCustomizationRules>
 struct ElementPropertyCustomizationState {
     std::optional<winrt::Windows::Foundation::IInspectable> originalValue;
     std::optional<PropertyOverrideValue> customValue;
+    winrt::Windows::Foundation::IInspectable lastAppliedValue{nullptr};
     int64_t propertyChangedToken = 0;
 };
 
@@ -534,49 +609,203 @@ thread_local std::unordered_map<InstanceHandle, ElementCustomizationState>
 
 thread_local bool g_elementPropertyModifying;
 
+// Global list to track ImageBrushes with failed loads for retry on network
+// reconnection.
+struct ImageBrushFailedLoadInfo {
+    winrt::weak_ref<Media::ImageBrush> brush;
+    winrt::hstring imageSource;
+    Media::ImageBrush::ImageFailed_revoker imageFailedRevoker;
+    Media::ImageBrush::ImageOpened_revoker imageOpenedRevoker;
+};
+
+struct FailedImageBrushesForThread {
+    std::list<ImageBrushFailedLoadInfo> failedImageBrushes;
+    winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher{nullptr};
+};
+
+thread_local FailedImageBrushesForThread g_failedImageBrushesForThread;
+
+// Global registry of all threads that have failed image brushes.
+std::mutex g_failedImageBrushesRegistryMutex;
+std::vector<winrt::weak_ref<winrt::Microsoft::UI::Dispatching::DispatcherQueue>>
+    g_failedImageBrushesRegistry;
+winrt::event_token g_networkStatusChangedToken;
+
+enum class ResourceVariableTheme {
+    None,
+    Dark,
+    Light,
+};
+
+enum class ResourceVariableType {
+    String,
+    Xaml,
+    ThemeResourceReference,
+};
+
+struct ResourceVariableEntry {
+    std::wstring key;
+    std::wstring value;
+    ResourceVariableTheme theme;
+    ResourceVariableType type;
+};
+
+thread_local std::vector<ResourceVariableEntry> g_resourceVariables;
+
+// Track original resource values for restoration (per-thread since
+// Application::Current().Resources() is per-thread).
+thread_local std::unordered_map<std::wstring,
+                                winrt::Windows::Foundation::IInspectable>
+    g_originalResourceValues;
+
+// Track our merged theme dictionary for cleanup (per-thread).
+thread_local ResourceDictionary g_resourceVariablesThemeDict{nullptr};
+
+// For listening to theme color changes (per-thread).
+thread_local winrt::Windows::UI::ViewManagement::UISettings g_uiSettings{
+    nullptr};
+thread_local winrt::event_token g_colorValuesChangedToken;
+
 winrt::Windows::Foundation::IInspectable ReadLocalValueWithWorkaround(
     DependencyObject elementDo,
     DependencyProperty property) {
-    const auto value = elementDo.ReadLocalValue(property);
-    // TODO: Is this still needed?
+    auto value = elementDo.ReadLocalValue(property);
+    if (value) {
+        // A workaround for ColumnDefinitionCollection of
+        // NavigationBarControlGrid which can't be read by ReadLocalValue for
+        // some reason, even though it seems to be a local property.
+        if (value == DependencyProperty::UnsetValue()) {
+            auto grid = elementDo.try_as<Controls::Grid>();
+            if (grid && grid.Name() == L"NavigationBarControlGrid") {
+                auto value2 = elementDo.GetValue(property);
+                if (value2 && winrt::get_class_name(value2) ==
+                                  L"Microsoft.UI.Xaml.Controls."
+                                  L"ColumnDefinitionCollection") {
+                    Wh_Log(
+                        L"Using GetValue workaround for "
+                        L"ColumnDefinitionCollection");
+                    value = std::move(value2);
+                }
+            }
+        }
+
+        // TODO: Is this still needed?
 #if 0
-    if (value && winrt::get_class_name(value) ==
-                     L"Windows.UI.Xaml.Data.BindingExpressionBase") {
-        // BindingExpressionBase was observed to be returned for XAML properties
-        // that were declared as following:
-        //
-        // <Border ... CornerRadius="{TemplateBinding CornerRadius}" />
-        //
-        // Calling SetValue with it fails with an error, so we won't be able to
-        // use it to restore the value. As a workaround, we use
-        // GetAnimationBaseValue to get the value.
-        return elementDo.GetAnimationBaseValue(property);
-    }
+        auto className = winrt::get_class_name(value);
+        if (className == L"Windows.UI.Xaml.Data.BindingExpressionBase" ||
+            className == L"Windows.UI.Xaml.Data.BindingExpression") {
+            // BindingExpressionBase was observed to be returned for XAML
+            // properties that were declared as following:
+            //
+            // <Border ... CornerRadius="{TemplateBinding CornerRadius}" />
+            //
+            // Calling SetValue with it fails with an error, so we won't be able
+            // to use it to restore the value. As a workaround, we use
+            // GetAnimationBaseValue to get the value.
+            Wh_Log(L"ReadLocalValue returned %s, using GetAnimationBaseValue",
+                   className.c_str());
+            value = elementDo.GetAnimationBaseValue(property);
+        }
 #endif
+    }
+
+    Wh_Log(L"Read property value %s",
+           value ? (value == DependencyProperty::UnsetValue()
+                        ? L"(unset)"
+                        : winrt::get_class_name(value).c_str())
+                 : L"(null)");
 
     return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Noise generation
+//
+// Generates a tileable noise BMP in memory. Density controls the brightness
+// distribution curve via a power function (lower density = sparser bright
+// pixels). Opacity is handled downstream by the composition effect graph.
+winrt::Windows::Storage::Streams::IRandomAccessStream CreateNoiseStream(
+    float density) {
+    // Cache the last stream to avoid regenerating when density hasn't changed.
+    // The cached stream is never read directly; callers get independent clones
+    // via CloneStream() so they don't share a seek cursor.
+    thread_local float cachedDensity = std::numeric_limits<float>::quiet_NaN();
+    thread_local winrt::Windows::Storage::Streams::InMemoryRandomAccessStream
+        cachedStream{nullptr};
+
+    if (density == cachedDensity && cachedStream) {
+        return cachedStream.CloneStream();
+    }
+
+    // Use 256x256 to minimize visible tiling seams.
+    constexpr int kSize = 256;
+    constexpr DWORD kBpp = 32;
+    constexpr DWORD rowSize = kSize * (kBpp / 8);
+    constexpr DWORD dataSize = rowSize * kSize;
+
+    BITMAPFILEHEADER fileHeader{
+        .bfType = 0x4D42,  // "BM"
+        .bfSize =
+            sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + dataSize,
+        .bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER),
+    };
+
+    BITMAPINFOHEADER infoHeader{
+        .biSize = sizeof(BITMAPINFOHEADER),
+        .biWidth = kSize,
+        .biHeight = kSize,
+        .biPlanes = 1,
+        .biBitCount = kBpp,
+        .biSizeImage = dataSize,
+    };
+
+    std::vector<uint8_t> pixels(dataSize);
+
+    // Precompute the density power curve as a lookup table so that
+    // std::pow is called 256 times instead of once per pixel (65536).
+    float safeDensity = std::clamp(density, 0.001f, 1.0f);
+    float exponent = 1.0f / safeDensity;
+
+    uint8_t lut[256];
+    for (int i = 0; i < 256; i++) {
+        lut[i] = static_cast<uint8_t>(std::pow(i / 255.0f, exponent) * 255.0f);
+    }
+
+    std::mt19937 rng(0);
+    std::uniform_int_distribution<int> dist(0, 255);
+
+    for (size_t i = 0; i < pixels.size(); i += 4) {
+        uint8_t gray = lut[dist(rng)];
+
+        // Fully opaque; opacity is applied downstream by ColorMatrixEffect.
+        pixels[i] = gray;
+        pixels[i + 1] = gray;
+        pixels[i + 2] = gray;
+        pixels[i + 3] = 255;
+    }
+
+    winrt::Windows::Storage::Streams::InMemoryRandomAccessStream stream;
+    winrt::Windows::Storage::Streams::DataWriter writer(stream);
+    writer.WriteBytes(winrt::array_view<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(&fileHeader), sizeof(fileHeader)));
+    writer.WriteBytes(winrt::array_view<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(&infoHeader), sizeof(infoHeader)));
+    writer.WriteBytes(pixels);
+    writer.StoreAsync().get();
+    writer.DetachStream();
+
+    cachedStream = std::move(stream);
+    cachedDensity = density;
+
+    return cachedStream.CloneStream();
 }
 
 // Blur background implementation, copied from TranslucentTB.
 ////////////////////////////////////////////////////////////////////////////////
 // clang-format off
-
-#include <initguid.h>
-
-#include <winrt/Microsoft.UI.Xaml.Hosting.h>
-
-namespace wfn = wf::Numerics;
-namespace wge = winrt::Windows::Graphics::Effects;
-namespace muc = winrt::Microsoft::UI::Composition;
-namespace muxh = mux::Hosting;
-
 template <> inline constexpr winrt::guid winrt::impl::guid_v<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>{
     winrt::impl::guid_v<winrt::Windows::Foundation::IPropertyValue>
 };
-
-#ifndef E_BOUNDS
-#define E_BOUNDS (HRESULT)(0x8000000BL)
-#endif
 
 typedef enum MY_D2D1_GAUSSIANBLUR_OPTIMIZATION
 {
@@ -589,35 +818,42 @@ typedef enum MY_D2D1_GAUSSIANBLUR_OPTIMIZATION
 
 ////////////////////////////////////////////////////////////////////////////////
 // XamlBlurBrush.h
-#include <winrt/Windows.Foundation.Numerics.h>
-#include <winrt/Microsoft.UI.Composition.h>
-#include <winrt/Microsoft.UI.Xaml.Media.h>
-
-class XamlBlurBrush : public mux::Media::XamlCompositionBrushBaseT<XamlBlurBrush>
+class XamlBlurBrush : public Media::XamlCompositionBrushBaseT<XamlBlurBrush>
 {
 public:
-	XamlBlurBrush(muc::Compositor compositor, float blurAmount, wfn::float4 tint);
+    XamlBlurBrush(UIElement element,
+                  float blurAmount,
+                  winrt::Windows::UI::Color tint,
+                  std::optional<uint8_t> tintOpacity,
+                  winrt::hstring tintThemeResourceKey,
+                  std::optional<float> tintLuminosityOpacity,
+                  std::optional<float> tintSaturation,
+                  std::optional<float> noiseOpacity,
+                  std::optional<float> noiseDensity);
+    ~XamlBlurBrush();
 
-	void OnConnected();
-	void OnDisconnected();
+    void OnConnected();
+    void OnDisconnected();
 
 private:
-	muc::Compositor m_compositor;
-	float m_blurAmount;
-	wfn::float4 m_tint;
+    void RefreshThemeTint();
+
+    muc::Compositor m_compositor;
+    float m_blurAmount;
+    winrt::Windows::UI::Color m_tint;
+    std::optional<uint8_t> m_tintOpacity;
+    winrt::hstring m_tintThemeResourceKey;
+    std::optional<float> m_tintLuminosityOpacity;
+    std::optional<float> m_tintSaturation;
+    std::optional<float> m_noiseOpacity;
+    std::optional<float> m_noiseDensity;
+    Media::SolidColorBrush m_proxyBrush{nullptr};
+    winrt::weak_ref<FrameworkElement> m_weakProxyElement;
+    winrt::hstring m_proxyKey;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// CompositeEffect.h
-#include <d2d1effects.h>
-#include <d2d1_1.h>
-#include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.Graphics.Effects.h>
-// #include <windows.graphics.effects.interop.h>
-
-#include <windows.graphics.effects.h>
-#include <sdkddkver.h>
-
+// windows.graphics.effects.interop.h
 #ifndef BUILD_WINDOWS
 namespace ABI {
 #endif
@@ -640,7 +876,7 @@ typedef enum GRAPHICS_EFFECT_PROPERTY_MAPPING
     GRAPHICS_EFFECT_PROPERTY_MAPPING_RECT_TO_VECTOR4,
     GRAPHICS_EFFECT_PROPERTY_MAPPING_RADIANS_TO_DEGREES,
     GRAPHICS_EFFECT_PROPERTY_MAPPING_COLORMATRIX_ALPHA_MODE,
-    GRAPHICS_EFFECT_PROPERTY_MAPPING_COLOR_TO_VECTOR3, 
+    GRAPHICS_EFFECT_PROPERTY_MAPPING_COLOR_TO_VECTOR3,
     GRAPHICS_EFFECT_PROPERTY_MAPPING_COLOR_TO_VECTOR4
 } GRAPHICS_EFFECT_PROPERTY_MAPPING;
 
@@ -693,7 +929,7 @@ DECLARE_INTERFACE_IID_(IGraphicsEffectD2D1Interop, IUnknown, "2FC57384-A068-44D7
 } // namespace Graphics
 } // namespace Windows
 #ifndef BUILD_WINDOWS
-} // namespace ABI 
+} // namespace ABI
 #endif
 
 template <> inline constexpr winrt::guid winrt::impl::guid_v<ABI::Windows::Graphics::Effects::IGraphicsEffectD2D1Interop>{
@@ -701,468 +937,1114 @@ template <> inline constexpr winrt::guid winrt::impl::guid_v<ABI::Windows::Graph
 };
 
 
-
-namespace awge = ABI::Windows::Graphics::Effects;
-
+////////////////////////////////////////////////////////////////////////////////
+// CompositeEffect.h
 struct CompositeEffect : winrt::implements<CompositeEffect, wge::IGraphicsEffect, wge::IGraphicsEffectSource, awge::IGraphicsEffectD2D1Interop>
 {
 public:
-	// IGraphicsEffectD2D1Interop
-	HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
+    // IGraphicsEffectD2D1Interop
+    HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
 
-	// IGraphicsEffect
-	winrt::hstring Name();
-	void Name(winrt::hstring name);
+    // IGraphicsEffect
+    winrt::hstring Name();
+    void Name(winrt::hstring name);
 
-	std::vector<wge::IGraphicsEffectSource> Sources;
-	D2D1_COMPOSITE_MODE Mode = D2D1_COMPOSITE_MODE_SOURCE_OVER;
+    std::vector<wge::IGraphicsEffectSource> Sources;
+    D2D1_COMPOSITE_MODE Mode = D2D1_COMPOSITE_MODE_SOURCE_OVER;
 private:
-	winrt::hstring m_name = L"CompositeEffect";
+    winrt::hstring m_name = L"CompositeEffect";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // CompositeEffect.cpp
 HRESULT CompositeEffect::GetEffectId(GUID* id) noexcept
 {
-	if (id == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (id == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*id = CLSID_D2D1Composite;
-	return S_OK;
+    *id = CLSID_D2D1Composite;
+    return S_OK;
 }
 
 HRESULT CompositeEffect::GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept
 {
-	if (index == nullptr || mapping == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (index == nullptr || mapping == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	const std::wstring_view nameView(name);
-	if (nameView == L"Mode")
-	{
-		*index = D2D1_COMPOSITE_PROP_MODE;
-		*mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+    const std::wstring_view nameView(name);
+    if (nameView == L"Mode")
+    {
+        *index = D2D1_COMPOSITE_PROP_MODE;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 
-	return E_INVALIDARG;
+    return E_INVALIDARG;
 }
 
 HRESULT CompositeEffect::GetPropertyCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = 1;
-	return S_OK;
+    *count = 1;
+    return S_OK;
 }
 
 HRESULT CompositeEffect::GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept try
 {
-	if (value == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (value == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	switch (index)
-	{
-		case D2D1_COMPOSITE_PROP_MODE:
-			*value = wf::PropertyValue::CreateUInt32((UINT32)Mode).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
-			break;
+    switch (index)
+    {
+        case D2D1_COMPOSITE_PROP_MODE:
+            *value = wf::PropertyValue::CreateUInt32((UINT32)Mode).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
 
-		default:
-			return E_BOUNDS;
-	}
+        default:
+            return E_BOUNDS;
+    }
 
-	return S_OK;
+    return S_OK;
 }
 catch (...)
 {
-	return winrt::to_hresult();
+    return winrt::to_hresult();
 }
 
 HRESULT CompositeEffect::GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept try
 {
-	if (source == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (source == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	winrt::copy_to_abi(Sources.at(index), *reinterpret_cast<void**>(source));
-	return S_OK;
+    winrt::copy_to_abi(Sources.at(index), *reinterpret_cast<void**>(source));
+    return S_OK;
 }
 catch (...)
 {
-	return winrt::to_hresult();
+    return winrt::to_hresult();
 }
 
 HRESULT CompositeEffect::GetSourceCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = static_cast<UINT>(Sources.size());
-	return S_OK;
+    *count = static_cast<UINT>(Sources.size());
+    return S_OK;
 }
 
 winrt::hstring CompositeEffect::Name()
 {
-	return m_name;
+    return m_name;
 }
 
 void CompositeEffect::Name(winrt::hstring name)
 {
-	m_name = name;
+    m_name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // FloodEffect.h
-#include <d2d1effects.h>
-#include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.Foundation.Numerics.h>
-#include <winrt/Windows.Graphics.Effects.h>
-// #include <windows.graphics.effects.interop.h>
-
-namespace awge = ABI::Windows::Graphics::Effects;
-
 struct FloodEffect : winrt::implements<FloodEffect, wge::IGraphicsEffect, wge::IGraphicsEffectSource, awge::IGraphicsEffectD2D1Interop>
 {
 public:
-	// IGraphicsEffectD2D1Interop
-	HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
+    // IGraphicsEffectD2D1Interop
+    HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
 
-	// IGraphicsEffect
-	winrt::hstring Name();
-	void Name(winrt::hstring name);
+    // IGraphicsEffect
+    winrt::hstring Name();
+    void Name(winrt::hstring name);
 
-	wfn::float4 Color = { 0.0f, 0.0f, 0.0f, 1.0f };
+    winrt::Windows::UI::Color Color{};
 private:
-	winrt::hstring m_name = L"FloodEffect";
+    winrt::hstring m_name = L"FloodEffect";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // FloodEffect.cpp
 HRESULT FloodEffect::GetEffectId(GUID* id) noexcept
 {
-	if (id == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (id == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*id = CLSID_D2D1Flood;
-	return S_OK;
+    *id = CLSID_D2D1Flood;
+    return S_OK;
 }
 
 HRESULT FloodEffect::GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept
 {
-	if (index == nullptr || mapping == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (index == nullptr || mapping == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	const std::wstring_view nameView(name);
-	if (nameView == L"Color")
-	{
-		*index = D2D1_FLOOD_PROP_COLOR;
-		*mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+    const std::wstring_view nameView(name);
+    if (nameView == L"Color")
+    {
+        *index = D2D1_FLOOD_PROP_COLOR;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 
-	return E_INVALIDARG;
+    return E_INVALIDARG;
 }
 
 HRESULT FloodEffect::GetPropertyCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = 1;
-	return S_OK;
+    *count = 1;
+    return S_OK;
 }
 
 HRESULT FloodEffect::GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept try
 {
-	if (value == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (value == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	switch (index)
-	{
-		case D2D1_FLOOD_PROP_COLOR:
-			*value = wf::PropertyValue::CreateSingleArray({ Color.x, Color.y, Color.z, Color.w }).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
-			break;
+    switch (index)
+    {
+        case D2D1_FLOOD_PROP_COLOR:
+            *value = wf::PropertyValue::CreateSingleArray({
+                Color.R / 255.0f,
+                Color.G / 255.0f,
+                Color.B / 255.0f,
+                Color.A / 255.0f,
+            }).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
 
-		default:
-			return E_BOUNDS;
-	}
+        default:
+            return E_BOUNDS;
+    }
 
-	return S_OK;
+    return S_OK;
 }
 catch (...)
 {
-	return winrt::to_hresult();
+    return winrt::to_hresult();
 }
 
 HRESULT FloodEffect::GetSource(UINT, awge::IGraphicsEffectSource** source) noexcept
 {
-	if (source == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (source == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	return E_BOUNDS;
+    return E_BOUNDS;
 }
 
 HRESULT FloodEffect::GetSourceCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = 0;
-	return S_OK;
+    *count = 0;
+    return S_OK;
 }
 
 winrt::hstring FloodEffect::Name()
 {
-	return m_name;
+    return m_name;
 }
 
 void FloodEffect::Name(winrt::hstring name)
 {
-	m_name = name;
+    m_name = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// BorderEffect.h
+struct BorderEffect : winrt::implements<BorderEffect, wge::IGraphicsEffect, wge::IGraphicsEffectSource, awge::IGraphicsEffectD2D1Interop>
+{
+public:
+    // IGraphicsEffectD2D1Interop
+    HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
+
+    // IGraphicsEffect
+    winrt::hstring Name();
+    void Name(winrt::hstring name);
+
+    wge::IGraphicsEffectSource Source{nullptr};
+    D2D1_BORDER_EDGE_MODE ExtendX = D2D1_BORDER_EDGE_MODE_WRAP;
+    D2D1_BORDER_EDGE_MODE ExtendY = D2D1_BORDER_EDGE_MODE_WRAP;
+private:
+    winrt::hstring m_name = L"BorderEffect";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// BorderEffect.cpp
+HRESULT BorderEffect::GetEffectId(GUID* id) noexcept
+{
+    if (!id)
+    {
+        return E_INVALIDARG;
+    }
+
+    *id = CLSID_D2D1Border;
+    return S_OK;
+}
+
+HRESULT BorderEffect::GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept
+{
+    if (!index || !mapping)
+    {
+        return E_INVALIDARG;
+    }
+
+    const std::wstring_view nameView(name);
+    if (nameView == L"ExtendX")
+    {
+        *index = D2D1_BORDER_PROP_EDGE_MODE_X;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+
+        return S_OK;
+    }
+
+    if (nameView == L"ExtendY")
+    {
+        *index = D2D1_BORDER_PROP_EDGE_MODE_Y;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+
+        return S_OK;
+    }
+
+    return E_INVALIDARG;
+}
+
+HRESULT BorderEffect::GetPropertyCount(UINT* count) noexcept
+{
+    if (!count)
+    {
+        return E_INVALIDARG;
+    }
+
+    *count = 2;
+    return S_OK;
+}
+
+HRESULT BorderEffect::GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept try
+{
+    if (!value)
+    {
+        return E_INVALIDARG;
+    }
+
+    switch (index)
+    {
+        case D2D1_BORDER_PROP_EDGE_MODE_X:
+            *value = wf::PropertyValue::CreateUInt32((UINT32)ExtendX).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
+
+        case D2D1_BORDER_PROP_EDGE_MODE_Y:
+            *value = wf::PropertyValue::CreateUInt32((UINT32)ExtendY).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
+
+        default:
+            return E_BOUNDS;
+    }
+
+    return S_OK;
+}
+catch (...)
+{
+    return winrt::to_hresult();
+}
+
+HRESULT BorderEffect::GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept
+{
+    if (!source)
+    {
+        return E_INVALIDARG;
+    }
+
+    if (index == 0 && Source)
+    {
+        winrt::copy_to_abi(Source, *reinterpret_cast<void**>(source));
+        return S_OK;
+    }
+
+    return E_BOUNDS;
+}
+
+HRESULT BorderEffect::GetSourceCount(UINT* count) noexcept
+{
+    if (!count)
+    {
+        return E_INVALIDARG;
+    }
+
+    *count = 1;
+    return S_OK;
+}
+
+winrt::hstring BorderEffect::Name()
+{
+    return m_name;
+}
+
+void BorderEffect::Name(winrt::hstring name)
+{
+    m_name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // GaussianBlurEffect.h
-#include <d2d1effects.h>
-#include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.Graphics.Effects.h>
-// #include <windows.graphics.effects.interop.h>
-
-namespace wge = winrt::Windows::Graphics::Effects;
-namespace awge = ABI::Windows::Graphics::Effects;
-
 struct GaussianBlurEffect : winrt::implements<GaussianBlurEffect, wge::IGraphicsEffect, wge::IGraphicsEffectSource, awge::IGraphicsEffectD2D1Interop>
 {
 public:
-	// IGraphicsEffectD2D1Interop
-	HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
-	HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
+    // IGraphicsEffectD2D1Interop
+    HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
 
-	// IGraphicsEffect
-	winrt::hstring Name();
-	void Name(winrt::hstring name);
+    // IGraphicsEffect
+    winrt::hstring Name();
+    void Name(winrt::hstring name);
 
-	wge::IGraphicsEffectSource Source;
+    wge::IGraphicsEffectSource Source;
 
-	float BlurAmount = 3.0f;
-	MY_D2D1_GAUSSIANBLUR_OPTIMIZATION Optimization = MY_D2D1_GAUSSIANBLUR_OPTIMIZATION_BALANCED;
-	D2D1_BORDER_MODE BorderMode = D2D1_BORDER_MODE_SOFT;
+    float BlurAmount = 3.0f;
+    MY_D2D1_GAUSSIANBLUR_OPTIMIZATION Optimization = MY_D2D1_GAUSSIANBLUR_OPTIMIZATION_BALANCED;
+    D2D1_BORDER_MODE BorderMode = D2D1_BORDER_MODE_SOFT;
 private:
-	winrt::hstring m_name = L"GaussianBlurEffect";
+    winrt::hstring m_name = L"GaussianBlurEffect";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // GaussianBlurEffect.cpp
 HRESULT GaussianBlurEffect::GetEffectId(GUID* id) noexcept
 {
-	if (id == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (id == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*id = CLSID_D2D1GaussianBlur;
-	return S_OK;
+    *id = CLSID_D2D1GaussianBlur;
+    return S_OK;
 }
 
 HRESULT GaussianBlurEffect::GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept
 {
-	if (index == nullptr || mapping == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (index == nullptr || mapping == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	const std::wstring_view nameView(name);
-	if (nameView == L"BlurAmount")
-	{
-		*index = D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION;
-		*mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+    const std::wstring_view nameView(name);
+    if (nameView == L"BlurAmount")
+    {
+        *index = D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
 
-		return S_OK;
-	}
-	else if (nameView == L"Optimization")
-	{
-		*index = D2D1_GAUSSIANBLUR_PROP_OPTIMIZATION;
-		*mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+        return S_OK;
+    }
+    else if (nameView == L"Optimization")
+    {
+        *index = D2D1_GAUSSIANBLUR_PROP_OPTIMIZATION;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
 
-		return S_OK;
-	}
-	else if (nameView == L"BorderMode")
-	{
-		*index = D2D1_GAUSSIANBLUR_PROP_BORDER_MODE;
-		*mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+        return S_OK;
+    }
+    else if (nameView == L"BorderMode")
+    {
+        *index = D2D1_GAUSSIANBLUR_PROP_BORDER_MODE;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
 
-		return S_OK;
-	}
+        return S_OK;
+    }
 
-	return E_INVALIDARG;
+    return E_INVALIDARG;
 }
 
 HRESULT GaussianBlurEffect::GetPropertyCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = 3;
-	return S_OK;
+    *count = 3;
+    return S_OK;
 }
 
 HRESULT GaussianBlurEffect::GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept try
 {
-	if (value == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (value == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	switch (index)
-	{
-		case D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION:
-			*value = wf::PropertyValue::CreateSingle(BlurAmount).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
-			break;
+    switch (index)
+    {
+        case D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION:
+            *value = wf::PropertyValue::CreateSingle(BlurAmount).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
 
-		case D2D1_GAUSSIANBLUR_PROP_OPTIMIZATION:
-			*value = wf::PropertyValue::CreateUInt32((UINT32)Optimization).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
-			break;
+        case D2D1_GAUSSIANBLUR_PROP_OPTIMIZATION:
+            *value = wf::PropertyValue::CreateUInt32((UINT32)Optimization).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
 
-		case D2D1_GAUSSIANBLUR_PROP_BORDER_MODE:
-			*value = wf::PropertyValue::CreateUInt32((UINT32)BorderMode).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
-			break;
+        case D2D1_GAUSSIANBLUR_PROP_BORDER_MODE:
+            *value = wf::PropertyValue::CreateUInt32((UINT32)BorderMode).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
 
-		default:
-			return E_BOUNDS;
-	}
+        default:
+            return E_BOUNDS;
+    }
 
-	return S_OK;
+    return S_OK;
 }
 catch (...)
 {
-	return winrt::to_hresult();
+    return winrt::to_hresult();
 }
 
 HRESULT GaussianBlurEffect::GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept
 {
-	if (source == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (source == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	if (index == 0)
-	{
-		winrt::copy_to_abi(Source, *reinterpret_cast<void**>(source));
-		return S_OK;
-	}
-	else
-	{
-		return E_BOUNDS;
-	}
+    if (index == 0)
+    {
+        winrt::copy_to_abi(Source, *reinterpret_cast<void**>(source));
+        return S_OK;
+    }
+    else
+    {
+        return E_BOUNDS;
+    }
 }
 
 HRESULT GaussianBlurEffect::GetSourceCount(UINT* count) noexcept
 {
-	if (count == nullptr) [[unlikely]]
-	{
-		return E_INVALIDARG;
-	}
+    if (count == nullptr) [[unlikely]]
+    {
+        return E_INVALIDARG;
+    }
 
-	*count = 1;
-	return S_OK;
+    *count = 1;
+    return S_OK;
 }
 
 winrt::hstring GaussianBlurEffect::Name()
 {
-	return m_name;
+    return m_name;
 }
 
 void GaussianBlurEffect::Name(winrt::hstring name)
 {
-	m_name = name;
+    m_name = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ColorMatrixEffect.h
+struct ColorMatrixEffect : winrt::implements<ColorMatrixEffect, wge::IGraphicsEffect, wge::IGraphicsEffectSource, awge::IGraphicsEffectD2D1Interop>
+{
+public:
+    // IGraphicsEffectD2D1Interop
+    HRESULT STDMETHODCALLTYPE GetEffectId(GUID* id) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetPropertyCount(UINT* count) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept override;
+    HRESULT STDMETHODCALLTYPE GetSourceCount(UINT* count) noexcept override;
+
+    // IGraphicsEffect
+    winrt::hstring Name();
+    void Name(winrt::hstring name);
+
+    wge::IGraphicsEffectSource Source{nullptr};
+
+    // D2D1_MATRIX_5X4_F: 5 rows x 4 columns (20 floats), initialized to identity.
+    float Matrix[20] = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+        0, 0, 0, 0,
+    };
+
+    uint32_t AlphaMode = D2D1_COLORMATRIX_ALPHA_MODE_PREMULTIPLIED;
+    bool ClampOutput = false;
+private:
+    winrt::hstring m_name = L"ColorMatrixEffect";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// ColorMatrixEffect.cpp
+HRESULT ColorMatrixEffect::GetEffectId(GUID* id) noexcept
+{
+    if (!id)
+    {
+        return E_INVALIDARG;
+    }
+
+    *id = CLSID_D2D1ColorMatrix;
+    return S_OK;
+}
+
+HRESULT ColorMatrixEffect::GetNamedPropertyMapping(LPCWSTR name, UINT* index, awge::GRAPHICS_EFFECT_PROPERTY_MAPPING* mapping) noexcept
+{
+    if (!index || !mapping)
+    {
+        return E_INVALIDARG;
+    }
+
+    const std::wstring_view nameView(name);
+    if (nameView == L"ColorMatrix")
+    {
+        *index = D2D1_COLORMATRIX_PROP_COLOR_MATRIX;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+
+        return S_OK;
+    }
+
+    if (nameView == L"AlphaMode")
+    {
+        *index = D2D1_COLORMATRIX_PROP_ALPHA_MODE;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+
+        return S_OK;
+    }
+
+    if (nameView == L"ClampOutput")
+    {
+        *index = D2D1_COLORMATRIX_PROP_CLAMP_OUTPUT;
+        *mapping = awge::GRAPHICS_EFFECT_PROPERTY_MAPPING_DIRECT;
+
+        return S_OK;
+    }
+
+    return E_INVALIDARG;
+}
+
+HRESULT ColorMatrixEffect::GetPropertyCount(UINT* count) noexcept
+{
+    if (!count)
+    {
+        return E_INVALIDARG;
+    }
+
+    *count = 3;
+    return S_OK;
+}
+
+HRESULT ColorMatrixEffect::GetProperty(UINT index, winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>** value) noexcept try
+{
+    if (!value)
+    {
+        return E_INVALIDARG;
+    }
+
+    switch (index)
+    {
+        case D2D1_COLORMATRIX_PROP_COLOR_MATRIX:
+            *value = wf::PropertyValue::CreateSingleArray(
+                winrt::array_view<const float>(Matrix, Matrix + 20)
+            ).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
+
+        case D2D1_COLORMATRIX_PROP_ALPHA_MODE:
+            *value = wf::PropertyValue::CreateUInt32(AlphaMode).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
+
+        case D2D1_COLORMATRIX_PROP_CLAMP_OUTPUT:
+            *value = wf::PropertyValue::CreateBoolean(ClampOutput).as<winrt::impl::abi_t<winrt::Windows::Foundation::IPropertyValue>>().detach();
+            break;
+
+        default:
+            return E_BOUNDS;
+    }
+
+    return S_OK;
+}
+catch (...)
+{
+    return winrt::to_hresult();
+}
+
+HRESULT ColorMatrixEffect::GetSource(UINT index, awge::IGraphicsEffectSource** source) noexcept
+{
+    if (!source)
+    {
+        return E_INVALIDARG;
+    }
+
+    if (index == 0 && Source)
+    {
+        winrt::copy_to_abi(Source, *reinterpret_cast<void**>(source));
+        return S_OK;
+    }
+
+    return E_BOUNDS;
+}
+
+HRESULT ColorMatrixEffect::GetSourceCount(UINT* count) noexcept
+{
+    if (!count)
+    {
+        return E_INVALIDARG;
+    }
+
+    *count = 1;
+    return S_OK;
+}
+
+winrt::hstring ColorMatrixEffect::Name()
+{
+    return m_name;
+}
+
+void ColorMatrixEffect::Name(winrt::hstring name)
+{
+    m_name = name;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // XamlBlurBrush.cpp
-XamlBlurBrush::XamlBlurBrush(muc::Compositor compositor, float blurAmount, wfn::float4 tint) :
-	m_compositor(std::move(compositor)),
-	m_blurAmount(blurAmount),
-	m_tint(tint)
-{ }
+XamlBlurBrush::XamlBlurBrush(UIElement element,
+                             float blurAmount,
+                             winrt::Windows::UI::Color tint,
+                             std::optional<uint8_t> tintOpacity,
+                             winrt::hstring tintThemeResourceKey,
+                             std::optional<float> tintLuminosityOpacity,
+                             std::optional<float> tintSaturation,
+                             std::optional<float> noiseOpacity,
+                             std::optional<float> noiseDensity) :
+    m_compositor(muxh::ElementCompositionPreview::GetElementVisual(element)
+                     .Compositor()),
+    m_blurAmount(blurAmount),
+    m_tint(tint),
+    m_tintOpacity(tintOpacity),
+    m_tintThemeResourceKey(std::move(tintThemeResourceKey)),
+    m_tintLuminosityOpacity(tintLuminosityOpacity),
+    m_tintSaturation(tintSaturation),
+    m_noiseOpacity(noiseOpacity),
+    m_noiseDensity(noiseDensity)
+{
+    if (!m_tintThemeResourceKey.empty())
+    {
+        if (auto fe = element.try_as<FrameworkElement>())
+        {
+            std::wstring xaml =
+                L"<SolidColorBrush"
+                L" xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/"
+                L"presentation\""
+                L" Color=\"{ThemeResource " +
+                std::wstring(m_tintThemeResourceKey) + L"}\"/>";
+            try
+            {
+                if (auto proxyBrush =
+                        Markup::XamlReader::Load(winrt::hstring(xaml))
+                            .try_as<Media::SolidColorBrush>())
+                {
+                    static std::atomic<uint64_t> s_proxyCounter{0};
+                    auto proxyKey = winrt::hstring(
+                        L"__WhBlurProxy_" +
+                        std::to_wstring(++s_proxyCounter));
+                    fe.Resources().Insert(
+                        winrt::box_value(proxyKey), proxyBrush);
+                    m_proxyBrush = proxyBrush;
+                    m_weakProxyElement = winrt::make_weak(fe);
+                    m_proxyKey = proxyKey;
+                    Wh_Log(L"Proxy brush for %s inserted with key %s",
+                           m_tintThemeResourceKey.c_str(),
+                           proxyKey.c_str());
+                }
+            }
+            catch (winrt::hresult_error const& ex)
+            {
+                Wh_Log(L"Failed to create proxy brush: %08X", ex.code());
+            }
+        }
+
+        if (m_proxyBrush)
+        {
+            m_proxyBrush.RegisterPropertyChangedCallback(
+                Media::SolidColorBrush::ColorProperty(),
+                [weakThis = get_weak()](auto&&, auto&&)
+                {
+                    if (auto self = weakThis.get())
+                    {
+                        if (const auto brush = self->CompositionBrush())
+                        {
+                            Wh_Log(L"Theme color changed");
+
+                            brush.Close();
+                            self->CompositionBrush(nullptr);
+                            self->OnConnected();
+                        }
+                    }
+                });
+        }
+    }
+}
+
+XamlBlurBrush::~XamlBlurBrush()
+{
+    if (auto element = m_weakProxyElement.get())
+    {
+        try
+        {
+            element.Resources().Remove(winrt::box_value(m_proxyKey));
+        }
+        catch (...)
+        {
+            HRESULT hr = winrt::to_hresult();
+            Wh_Log(L"Error %08X", hr);
+        }
+    }
+}
 
 void XamlBlurBrush::OnConnected()
 {
-	if (!CompositionBrush())
-	{
-		auto backdropBrush = m_compositor.CreateBackdropBrush();
+    if (!CompositionBrush())
+    {
+        RefreshThemeTint();
 
-		auto blurEffect = winrt::make_self<GaussianBlurEffect>();
-		blurEffect->Source = muc::CompositionEffectSourceParameter(L"backdrop");
-		blurEffect->BlurAmount = m_blurAmount;
+        auto backdropBrush = m_compositor.CreateBackdropBrush();
 
-		auto floodEffect = winrt::make_self<FloodEffect>();
-		floodEffect->Color = m_tint;
+        // Rec. 709 luma coefficients, used for saturation and luminosity.
+        constexpr float kLumaR = 0.2126f;
+        constexpr float kLumaG = 0.7152f;
+        constexpr float kLumaB = 0.0722f;
 
-		auto compositeEffect = winrt::make_self<CompositeEffect>();
-		compositeEffect->Sources.push_back(*blurEffect);
-		compositeEffect->Sources.push_back(*floodEffect);
-		compositeEffect->Mode = D2D1_COMPOSITE_MODE_SOURCE_OVER;
+        // 1. Blur
+        auto blurEffect = winrt::make_self<GaussianBlurEffect>();
+        blurEffect->Source = muc::CompositionEffectSourceParameter(L"backdrop");
+        blurEffect->BlurAmount = m_blurAmount;
+        blurEffect->Name(L"BlurEffect");
 
-		auto factory = m_compositor.CreateEffectFactory(*compositeEffect);
-		auto blurBrush = factory.CreateBrush();
-		blurBrush.SetSourceParameter(L"backdrop", backdropBrush);
+        wge::IGraphicsEffectSource topOfStack = *blurEffect;
 
-		CompositionBrush(blurBrush);
-	}
+        // 2. Saturation (optional)
+        if (m_tintSaturation && *m_tintSaturation != 1.0f)
+        {
+            float s = std::max(*m_tintSaturation, 0.0f);
+            float invS = 1.0f - s;
+
+            auto satMatrix = winrt::make_self<ColorMatrixEffect>();
+            satMatrix->Source = topOfStack;
+
+            // Standard saturation matrix: lerp between luminance and identity.
+            auto& m = satMatrix->Matrix;
+            m[0]  = invS * kLumaR + s; m[1]  = invS * kLumaR;     m[2]  = invS * kLumaR;     m[3]  = 0.0f;
+            m[4]  = invS * kLumaG;     m[5]  = invS * kLumaG + s; m[6]  = invS * kLumaG;     m[7]  = 0.0f;
+            m[8]  = invS * kLumaB;     m[9]  = invS * kLumaB;     m[10] = invS * kLumaB + s; m[11] = 0.0f;
+            m[12] = 0.0f;              m[13] = 0.0f;              m[14] = 0.0f;              m[15] = 1.0f;
+
+            satMatrix->Name(L"SaturationEffect");
+            topOfStack = *satMatrix;
+        }
+
+        // 3. Luminosity (optional) - shifts pixel luminance towards the tint's
+        // luminance, blended by the opacity factor.
+        if (m_tintLuminosityOpacity && *m_tintLuminosityOpacity > 0.0f)
+        {
+            float op = std::clamp(*m_tintLuminosityOpacity, 0.0f, 1.0f);
+
+            float tintLum = (m_tint.R / 255.0f) * kLumaR +
+                            (m_tint.G / 255.0f) * kLumaG +
+                            (m_tint.B / 255.0f) * kLumaB;
+
+            auto lumMatrix = winrt::make_self<ColorMatrixEffect>();
+            lumMatrix->Source = topOfStack;
+
+            auto& m = lumMatrix->Matrix;
+            m[0]  = 1.0f - (kLumaR * op); m[1]  = -(kLumaR * op);       m[2]  = -(kLumaR * op);       m[3]  = 0.0f;
+            m[4]  = -(kLumaG * op);       m[5]  = 1.0f - (kLumaG * op); m[6]  = -(kLumaG * op);       m[7]  = 0.0f;
+            m[8]  = -(kLumaB * op);       m[9]  = -(kLumaB * op);       m[10] = 1.0f - (kLumaB * op); m[11] = 0.0f;
+            m[12] = 0.0f;                 m[13] = 0.0f;                 m[14] = 0.0f;                 m[15] = 1.0f;
+            m[16] = tintLum * op;         m[17] = tintLum * op;         m[18] = tintLum * op;         m[19] = 0.0f;
+
+            lumMatrix->Name(L"LuminosityBlend");
+            topOfStack = *lumMatrix;
+        }
+
+        // 4. Noise overlay (optional) - procedural tiled noise with adjustable
+        // density and opacity.
+        muc::CompositionSurfaceBrush noiseBrush{nullptr};
+        if (m_noiseOpacity && *m_noiseOpacity > 0.0f)
+        {
+            float density = m_noiseDensity.value_or(1.0f);
+
+            auto stream = CreateNoiseStream(density);
+            auto surface =
+                Media::LoadedImageSurface::StartLoadFromStream(stream);
+            noiseBrush = m_compositor.CreateSurfaceBrush(surface);
+            noiseBrush.Stretch(muc::CompositionStretch::None);
+
+            // Tile via border effect (wrap mode).
+            auto borderEffect = winrt::make_self<BorderEffect>();
+            borderEffect->Source =
+                muc::CompositionEffectSourceParameter(L"NoiseSource");
+
+            // Scale all channels by opacity for premultiplied blending.
+            float nOp = std::clamp(*m_noiseOpacity, 0.0f, 1.0f);
+
+            auto opacityEffect = winrt::make_self<ColorMatrixEffect>();
+            opacityEffect->Source = *borderEffect;
+            // Matrix: Scale all channels by opacity (for premultiplied blending).
+            opacityEffect->Matrix[0] = nOp;
+            opacityEffect->Matrix[5] = nOp;
+            opacityEffect->Matrix[10] = nOp;
+            opacityEffect->Matrix[15] = nOp;
+            opacityEffect->Name(L"NoiseOpacityEffect");
+
+            // Composite noise over the current stack.
+            auto noiseComposite = winrt::make_self<CompositeEffect>();
+            noiseComposite->Mode = D2D1_COMPOSITE_MODE_SOURCE_OVER;
+            noiseComposite->Sources.push_back(topOfStack);
+            noiseComposite->Sources.push_back(*opacityEffect);
+            noiseComposite->Name(L"NoiseComposite");
+            topOfStack = *noiseComposite;
+        }
+
+        // 5. Tint (flood color composited over the stack).
+        auto floodEffect = winrt::make_self<FloodEffect>();
+        floodEffect->Color = m_tint;
+        floodEffect->Name(L"FloodEffect");
+
+        auto compositeEffect = winrt::make_self<CompositeEffect>();
+        compositeEffect->Mode = D2D1_COMPOSITE_MODE_SOURCE_OVER;
+        compositeEffect->Sources.push_back(topOfStack);
+        compositeEffect->Sources.push_back(*floodEffect);
+
+        auto factory = m_compositor.CreateEffectFactory(*compositeEffect);
+        auto brush = factory.CreateBrush();
+
+        brush.SetSourceParameter(L"backdrop", backdropBrush);
+
+        // Bind the noise brush if we created one.
+        if (noiseBrush)
+        {
+            brush.SetSourceParameter(L"NoiseSource", noiseBrush);
+        }
+
+        CompositionBrush(brush);
+    }
 }
 
 void XamlBlurBrush::OnDisconnected()
 {
-	if (const auto brush = CompositionBrush())
-	{
-		brush.Close();
-		CompositionBrush(nullptr);
-	}
+    if (const auto brush = CompositionBrush())
+    {
+        brush.Close();
+        CompositionBrush(nullptr);
+    }
+}
+
+void XamlBlurBrush::RefreshThemeTint()
+{
+    if (!m_proxyBrush)
+    {
+        return;
+    }
+
+    m_tint = m_proxyBrush.Color();
+    if (m_tintOpacity)
+    {
+        m_tint.A = *m_tintOpacity;
+    }
 }
 
 // clang-format on
 ////////////////////////////////////////////////////////////////////////////////
+
+// Helper functions for tracking and retrying failed ImageBrush loads.
+void RetryFailedImageLoadsOnCurrentThread() {
+    Wh_Log(L"Retrying failed image loads on current thread");
+
+    auto& failedImageBrushes = g_failedImageBrushesForThread.failedImageBrushes;
+
+    // Retry loading all failed images by re-setting the ImageSource property.
+    for (auto& info : failedImageBrushes) {
+        if (auto brush = info.brush.get()) {
+            try {
+                Wh_Log(L"Retrying image load for: %s",
+                       info.imageSource.c_str());
+                // Clear the ImageSource first to force a reload.
+                brush.ImageSource(nullptr);
+                // Then create a new BitmapImage and set it.
+                Media::Imaging::BitmapImage bitmapImage;
+                bitmapImage.UriSource(
+                    winrt::Windows::Foundation::Uri(info.imageSource));
+                brush.ImageSource(bitmapImage);
+            } catch (winrt::hresult_error const& ex) {
+                Wh_Log(L"Error retrying image load %08X: %s", ex.code(),
+                       ex.message().c_str());
+            }
+        }
+    }
+
+    // Clean up any weak refs that are no longer valid.
+    std::erase_if(failedImageBrushes,
+                  [](const auto& info) { return !info.brush.get(); });
+}
+
+void OnNetworkStatusChanged(
+    winrt::Windows::Foundation::IInspectable const& sender) {
+    Wh_Log(L"Network status changed, dispatching retry to all UI threads");
+
+    // Get snapshot of dispatchers under lock.
+    std::vector<winrt::Microsoft::UI::Dispatching::DispatcherQueue> dispatchers;
+    {
+        std::lock_guard<std::mutex> lock(g_failedImageBrushesRegistryMutex);
+
+        for (auto& weakDispatcher : g_failedImageBrushesRegistry) {
+            if (auto dispatcher = weakDispatcher.get()) {
+                dispatchers.push_back(dispatcher);
+            }
+        }
+
+        // Clean up dead weak refs.
+        std::erase_if(
+            g_failedImageBrushesRegistry,
+            [](const auto& weakDispatcher) { return !weakDispatcher.get(); });
+    }
+
+    // Dispatch retry to each UI thread.
+    for (auto& dispatcher : dispatchers) {
+        try {
+            dispatcher.TryEnqueue(
+                []() { RetryFailedImageLoadsOnCurrentThread(); });
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error dispatching retry to UI thread %08X: %s", ex.code(),
+                   ex.message().c_str());
+        }
+    }
+}
+
+void RemoveFromFailedImageBrushes(Media::ImageBrush const& brush) {
+    auto& failedImageBrushes = g_failedImageBrushesForThread.failedImageBrushes;
+
+    std::erase_if(failedImageBrushes, [&brush](const auto& info) {
+        if (auto existingBrush = info.brush.get()) {
+            return existingBrush == brush;
+        }
+        return false;
+    });
+}
+
+void SetupImageBrushTracking(Media::ImageBrush const& brush,
+                             winrt::hstring const& imageSourceUrl) {
+    // First remove any existing entry for this brush to avoid duplicates.
+    RemoveFromFailedImageBrushes(brush);
+
+    // Add new entry with event handlers.
+    ImageBrushFailedLoadInfo info;
+    info.brush = winrt::make_weak(brush);
+    info.imageSource = imageSourceUrl;
+
+    // Set up ImageFailed event handler - add to list only when load fails.
+    info.imageFailedRevoker = brush.ImageFailed(
+        winrt::auto_revoke,
+        [brushWeak = winrt::make_weak(brush), imageSourceUrl](
+            winrt::Windows::Foundation::IInspectable const& sender,
+            ExceptionRoutedEventArgs const& e) {
+            Wh_Log(L"ImageBrush load failed for: %s, error: %s",
+                   imageSourceUrl.c_str(), e.ErrorMessage().c_str());
+            // The brush should already be in the list, no action needed here as
+            // we add it preemptively in SetupImageBrushTracking.
+        });
+
+    // Set up ImageOpened event handler - remove from list when load succeeds.
+    info.imageOpenedRevoker = brush.ImageOpened(
+        winrt::auto_revoke,
+        [brushWeak = winrt::make_weak(brush)](
+            winrt::Windows::Foundation::IInspectable const& sender,
+            RoutedEventArgs const& e) {
+            Wh_Log(L"ImageBrush loaded successfully, removing from retry list");
+
+            if (auto brush = brushWeak.get()) {
+                RemoveFromFailedImageBrushes(brush);
+            }
+        });
+
+    // Add to the list preemptively - will be removed if load succeeds.
+    auto& failedImageBrushes = g_failedImageBrushesForThread.failedImageBrushes;
+    failedImageBrushes.push_back(std::move(info));
+
+    // Ensure we have a dispatcher for this thread.
+    if (!g_failedImageBrushesForThread.dispatcher) {
+        try {
+            g_failedImageBrushesForThread.dispatcher = winrt::Microsoft::UI::
+                Dispatching::DispatcherQueue::GetForCurrentThread();
+            if (g_failedImageBrushesForThread.dispatcher) {
+                // Register this thread's dispatcher globally.
+                std::lock_guard<std::mutex> lock(
+                    g_failedImageBrushesRegistryMutex);
+                g_failedImageBrushesRegistry.push_back(
+                    winrt::make_weak(g_failedImageBrushesForThread.dispatcher));
+                Wh_Log(L"Registered UI thread dispatcher for network retry");
+            }
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error getting dispatcher for current thread %08X: %s",
+                   ex.code(), ex.message().c_str());
+        }
+    }
+
+    // Register global network status changed handler if not already registered.
+    // This is a one-time global registration.
+    [[maybe_unused]] static bool networkHandlerRegistered = []() {
+        try {
+            g_networkStatusChangedToken =
+                winrt::Windows::Networking::Connectivity::NetworkInformation::
+                    NetworkStatusChanged(OnNetworkStatusChanged);
+            Wh_Log(L"Registered global network status change handler");
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error registering network status handler %08X: %s",
+                   ex.code(), ex.message().c_str());
+        }
+        return true;
+    }();
+}
 
 void SetOrClearValue(DependencyObject elementDo,
                      DependencyProperty property,
@@ -1175,13 +2057,13 @@ void SetOrClearValue(DependencyObject elementDo,
     } else if (auto* blurBrushParams =
                    std::get_if<XamlBlurBrushParams>(&overrideValue)) {
         if (auto uiElement = elementDo.try_as<UIElement>()) {
-            auto compositor =
-                muxh::ElementCompositionPreview::GetElementVisual(uiElement)
-                    .Compositor();
-
-            value = winrt::make<XamlBlurBrush>(std::move(compositor),
-                                               blurBrushParams->blurAmount,
-                                               blurBrushParams->tint);
+            value = winrt::make<XamlBlurBrush>(
+                uiElement, blurBrushParams->blurAmount, blurBrushParams->tint,
+                blurBrushParams->tintOpacity,
+                winrt::hstring(blurBrushParams->tintThemeResourceKey),
+                blurBrushParams->tintLuminosityOpacity,
+                blurBrushParams->tintSaturation, blurBrushParams->noiseOpacity,
+                blurBrushParams->noiseDensity);
         } else {
             Wh_Log(L"Can't get UIElement for blur brush");
             return;
@@ -1192,8 +2074,57 @@ void SetOrClearValue(DependencyObject elementDo,
     }
 
     if (value == DependencyProperty::UnsetValue()) {
-        elementDo.ClearValue(property);
+        Wh_Log(L"Clearing property value");
+        try {
+            elementDo.ClearValue(property);
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        }
         return;
+    }
+
+    Wh_Log(L"Setting property value %s",
+           value ? winrt::get_class_name(value).c_str() : L"(null)");
+
+    // Track ImageBrush with remote ImageSource for retry on network
+    // reconnection. This handles cases where an ImageBrush is set as a property
+    // value (e.g., Background).
+    if (auto imageBrush = value.try_as<Media::ImageBrush>()) {
+        auto imageSource = imageBrush.ImageSource();
+        if (auto bitmapImage =
+                imageSource.try_as<Media::Imaging::BitmapImage>()) {
+            auto uriSource = bitmapImage.UriSource();
+            if (uriSource) {
+                winrt::hstring uriString = uriSource.ToString();
+                if (uriString.starts_with(L"https://") ||
+                    uriString.starts_with(L"http://")) {
+                    Wh_Log(L"Tracking ImageBrush with remote source: %s",
+                           uriString.c_str());
+                    SetupImageBrushTracking(imageBrush, uriString);
+                }
+            }
+        }
+    }
+    // Also handle direct ImageSource property being set on an ImageBrush.
+    else if (auto imageBrush = elementDo.try_as<Media::ImageBrush>()) {
+        if (property == Media::ImageBrush::ImageSourceProperty()) {
+            // Check if the value is a BitmapImage with an http(s):// URI.
+            if (auto bitmapImage =
+                    value.try_as<Media::Imaging::BitmapImage>()) {
+                auto uriSource = bitmapImage.UriSource();
+                if (uriSource) {
+                    winrt::hstring uriString = uriSource.ToString();
+                    if (uriString.starts_with(L"https://") ||
+                        uriString.starts_with(L"http://")) {
+                        Wh_Log(
+                            L"Tracking ImageBrush ImageSource property with "
+                            L"remote source: %s",
+                            uriString.c_str());
+                        SetupImageBrushTracking(imageBrush, uriString);
+                    }
+                }
+            }
+        }
     }
 
     // This might fail. See `ReadLocalValueWithWorkaround` for an example (which
@@ -1296,8 +2227,13 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
     substr = substr.substr(0, substr.size() - std::size(kWindhawkBlurSuffix));
 
     bool pendingTintColorThemeResource = false;
-    wf::Numerics::float4 tint{};
+    std::wstring tintThemeResourceKey;
+    winrt::Windows::UI::Color tint{};
     float tintOpacity = std::numeric_limits<float>::quiet_NaN();
+    float tintLuminosityOpacity = std::numeric_limits<float>::quiet_NaN();
+    float tintSaturation = std::numeric_limits<float>::quiet_NaN();
+    float noiseOpacity = std::numeric_limits<float>::quiet_NaN();
+    float noiseDensity = std::numeric_limits<float>::quiet_NaN();
     float blurAmount = 0;
 
     constexpr auto kTintColorThemeResourcePrefix =
@@ -1305,6 +2241,10 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
     constexpr auto kTintColorThemeResourceSuffix = L"}\""sv;
     constexpr auto kTintColorPrefix = L"TintColor=\"#"sv;
     constexpr auto kTintOpacityPrefix = L"TintOpacity=\""sv;
+    constexpr auto kTintLuminosityOpacityPrefix = L"TintLuminosityOpacity=\""sv;
+    constexpr auto kTintSaturationPrefix = L"TintSaturation=\""sv;
+    constexpr auto kNoiseOpacityPrefix = L"NoiseOpacity=\""sv;
+    constexpr auto kNoiseDensityPrefix = L"NoiseDensity=\""sv;
     constexpr auto kBlurAmountPrefix = L"BlurAmount=\""sv;
     for (const auto prop : SplitStringView(substr, L" ")) {
         const auto propSubstr = TrimStringView(prop);
@@ -1323,30 +2263,9 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
 
             pendingTintColorThemeResource = false;
 
-            auto themeResourceName = propSubstr.substr(
+            tintThemeResourceKey = propSubstr.substr(
                 0,
                 propSubstr.size() - std::size(kTintColorThemeResourceSuffix));
-
-            auto resources = Application::Current().Resources();
-            auto resource = resources.TryLookup(
-                winrt::box_value(winrt::hstring(themeResourceName)));
-            if (resource) {
-                if (auto colorBrush =
-                        resource.try_as<mux::Media::SolidColorBrush>()) {
-                    auto color = colorBrush.Color();
-                    tint = {color.R / 255.0f, color.G / 255.0f,
-                            color.B / 255.0f, color.A / 255.0f};
-                } else if (auto color =
-                               resource.try_as<winrt::Windows::UI::Color>()) {
-                    tint = {color->R / 255.0f, color->G / 255.0f,
-                            color->B / 255.0f, color->A / 255.0f};
-                } else {
-                    Wh_Log(L"Resource type is unsupported: %s",
-                           winrt::get_class_name(resource).c_str());
-                }
-            } else {
-                Wh_Log(L"Failed to find resource");
-            }
 
             continue;
         }
@@ -1380,7 +2299,7 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
             uint8_t r = LOBYTE(HIWORD(valNum));
             uint8_t g = HIBYTE(LOWORD(valNum));
             uint8_t b = LOBYTE(LOWORD(valNum));
-            tint = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
+            tint = {a, r, g, b};
             continue;
         }
 
@@ -1390,6 +2309,43 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
                 std::size(kTintOpacityPrefix),
                 propSubstr.size() - std::size(kTintOpacityPrefix) - 1);
             tintOpacity = std::stof(std::wstring(valStr));
+            continue;
+        }
+
+        if (propSubstr.starts_with(kTintLuminosityOpacityPrefix) &&
+            propSubstr.back() == L'\"') {
+            auto valStr = propSubstr.substr(
+                std::size(kTintLuminosityOpacityPrefix),
+                propSubstr.size() - std::size(kTintLuminosityOpacityPrefix) -
+                    1);
+            tintLuminosityOpacity = std::stof(std::wstring(valStr));
+            continue;
+        }
+
+        if (propSubstr.starts_with(kTintSaturationPrefix) &&
+            propSubstr.back() == L'\"') {
+            auto valStr = propSubstr.substr(
+                std::size(kTintSaturationPrefix),
+                propSubstr.size() - std::size(kTintSaturationPrefix) - 1);
+            tintSaturation = std::stof(std::wstring(valStr));
+            continue;
+        }
+
+        if (propSubstr.starts_with(kNoiseOpacityPrefix) &&
+            propSubstr.back() == L'\"') {
+            auto valStr = propSubstr.substr(
+                std::size(kNoiseOpacityPrefix),
+                propSubstr.size() - std::size(kNoiseOpacityPrefix) - 1);
+            noiseOpacity = std::stof(std::wstring(valStr));
+            continue;
+        }
+
+        if (propSubstr.starts_with(kNoiseDensityPrefix) &&
+            propSubstr.back() == L'\"') {
+            auto valStr = propSubstr.substr(
+                std::size(kNoiseDensityPrefix),
+                propSubstr.size() - std::size(kNoiseDensityPrefix) - 1);
+            noiseDensity = std::stof(std::wstring(valStr));
             continue;
         }
 
@@ -1417,12 +2373,25 @@ std::optional<PropertyOverrideValue> ParseNonXamlPropertyOverrideValue(
             tintOpacity = 1.0f;
         }
 
-        tint.w = tintOpacity;
+        tint.A = static_cast<uint8_t>(tintOpacity * 255.0f);
     }
 
     return XamlBlurBrushParams{
         .blurAmount = blurAmount,
         .tint = tint,
+        .tintOpacity =
+            !std::isnan(tintOpacity) ? std::optional(tint.A) : std::nullopt,
+        .tintThemeResourceKey = std::move(tintThemeResourceKey),
+        .tintLuminosityOpacity = !std::isnan(tintLuminosityOpacity)
+                                     ? std::optional(tintLuminosityOpacity)
+                                     : std::nullopt,
+        .tintSaturation = !std::isnan(tintSaturation)
+                              ? std::optional(tintSaturation)
+                              : std::nullopt,
+        .noiseOpacity = !std::isnan(noiseOpacity) ? std::optional(noiseOpacity)
+                                                  : std::nullopt,
+        .noiseDensity = !std::isnan(noiseDensity) ? std::optional(noiseDensity)
+                                                  : std::nullopt,
     };
 }
 
@@ -1542,6 +2511,10 @@ const PropertyOverrides& GetResolvedPropertyOverrides(
                type.data(), propertyOverrides.size());
     } catch (winrt::hresult_error const& ex) {
         Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        if (ex.code() == (HRESULT)0x802B000A) {
+            static const PropertyOverrides emptyOverrides;
+            return emptyOverrides; // Resource not found yet, don't mark as resolved so we can retry
+        }
     } catch (std::exception const& ex) {
         Wh_Log(L"Error: %S", ex.what());
     }
@@ -1589,6 +2562,10 @@ const PropertyValues& GetResolvedPropertyValues(
                type.data(), propertyValues.size());
     } catch (winrt::hresult_error const& ex) {
         Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        if (ex.code() == (HRESULT)0x802B000A) {
+            static const PropertyValues emptyValues;
+            return emptyValues;
+        }
     } catch (std::exception const& ex) {
         Wh_Log(L"Error: %S", ex.what());
     }
@@ -1799,45 +2776,52 @@ void ApplyCustomizationsForVisualStateGroup(
                 ReadLocalValueWithWorkaround(element, property);
             propertyCustomizationState.customValue = it->second;
             SetOrClearValue(element, property, it->second);
+            propertyCustomizationState.lastAppliedValue =
+                ReadLocalValueWithWorkaround(element, property);
         }
 
-        propertyCustomizationState
-            .propertyChangedToken = elementDo.RegisterPropertyChangedCallback(
-            property,
-            [&propertyCustomizationState](DependencyObject sender,
-                                          DependencyProperty property) {
-                if (g_elementPropertyModifying) {
-                    return;
-                }
+        propertyCustomizationState.propertyChangedToken =
+            elementDo.RegisterPropertyChangedCallback(
+                property,
+                [&propertyCustomizationState](DependencyObject sender,
+                                              DependencyProperty property) {
+                    if (g_elementPropertyModifying) {
+                        return;
+                    }
 
-                auto element = sender.try_as<FrameworkElement>();
-                if (!element) {
-                    return;
-                }
+                    auto element = sender.try_as<FrameworkElement>();
+                    if (!element) {
+                        return;
+                    }
 
-                if (!propertyCustomizationState.customValue) {
-                    return;
-                }
+                    if (!propertyCustomizationState.customValue) {
+                        return;
+                    }
 
-                Wh_Log(L"Re-applying style for %s",
-                       winrt::get_class_name(element).c_str());
+                    auto localValue =
+                        ReadLocalValueWithWorkaround(element, property);
 
-                auto localValue =
-                    ReadLocalValueWithWorkaround(element, property);
-
-                if (auto* customValue =
-                        std::get_if<winrt::Windows::Foundation::IInspectable>(
-                            &*propertyCustomizationState.customValue)) {
-                    if (*customValue != localValue) {
+                    // Only update originalValue if the local value was changed
+                    // externally (e.g. by a Setter). When an animation changes
+                    // only the effective value, the local value still matches
+                    // what we set, so updating originalValue would corrupt it
+                    // with our own brush - causing the brush to survive cleanup
+                    // and crash when the mod's DLL is unloaded.
+                    if (localValue !=
+                        propertyCustomizationState.lastAppliedValue) {
                         propertyCustomizationState.originalValue = localValue;
                     }
-                }
 
-                g_elementPropertyModifying = true;
-                SetOrClearValue(element, property,
-                                *propertyCustomizationState.customValue);
-                g_elementPropertyModifying = false;
-            });
+                    Wh_Log(L"Re-applying style for %s",
+                           winrt::get_class_name(element).c_str());
+
+                    g_elementPropertyModifying = true;
+                    SetOrClearValue(element, property,
+                                    *propertyCustomizationState.customValue);
+                    propertyCustomizationState.lastAppliedValue =
+                        ReadLocalValueWithWorkaround(element, property);
+                    g_elementPropertyModifying = false;
+                });
     }
 
     if (visualStateGroup) {
@@ -1894,6 +2878,8 @@ void ApplyCustomizationsForVisualStateGroup(
 
                             propertyCustomizationState.customValue = it->second;
                             SetOrClearValue(element, property, it->second);
+                            propertyCustomizationState.lastAppliedValue =
+                                ReadLocalValueWithWorkaround(element, property);
                         } else {
                             if (propertyCustomizationState.originalValue) {
                                 SetOrClearValue(
@@ -1902,6 +2888,8 @@ void ApplyCustomizationsForVisualStateGroup(
                                 propertyCustomizationState.originalValue
                                     .reset();
                             }
+                            propertyCustomizationState.lastAppliedValue =
+                                nullptr;
 
                             propertyCustomizationState.customValue.reset();
                         }
@@ -1922,8 +2910,12 @@ void RestoreCustomizationsForVisualStateGroup(
         for (const auto& [property, state] :
              elementCustomizationStateForVisualStateGroup
                  .propertyCustomizationStates) {
-            element.UnregisterPropertyChangedCallback(
-                property, state.propertyChangedToken);
+            try {
+                element.UnregisterPropertyChangedCallback(
+                    property, state.propertyChangedToken);
+            } catch (winrt::hresult_error const& ex) {
+                Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+            }
 
             if (state.originalValue) {
                 SetOrClearValue(element, property, *state.originalValue);
@@ -1936,15 +2928,37 @@ void RestoreCustomizationsForVisualStateGroup(
                                     : nullptr;
     if (visualStateGroupIter && elementCustomizationStateForVisualStateGroup
                                     .visualStateGroupCurrentStateChangedToken) {
-        visualStateGroupIter.CurrentStateChanged(
-            elementCustomizationStateForVisualStateGroup
-                .visualStateGroupCurrentStateChangedToken);
+        try {
+            visualStateGroupIter.CurrentStateChanged(
+                elementCustomizationStateForVisualStateGroup
+                    .visualStateGroupCurrentStateChangedToken);
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        }
     }
 }
+
+void MergeResourceVariables();
 
 void ApplyCustomizations(InstanceHandle handle,
                          FrameworkElement element,
                          PCWSTR fallbackClassName) {
+    // Merge resource dictionary on first element add. Merging it earlier on
+    // window creation doesn't work, perhaps merged dictionaries are reset
+    // during initialization.
+    if (!g_resourceVariablesThemeDict) {
+        MergeResourceVariables();
+    } else {
+        // Ensure the dictionary stays merged. WinUI 3 can sometimes reset dictionaries during launch.
+        try {
+            auto merged = Application::Current().Resources().MergedDictionaries();
+            uint32_t index;
+            if (!merged.IndexOf(g_resourceVariablesThemeDict, index)) {
+                merged.Append(g_resourceVariablesThemeDict);
+            }
+        } catch (...) {}
+    }
+
     auto overrides = FindElementPropertyOverrides(element, fallbackClassName);
     if (overrides.empty()) {
         return;
@@ -2001,59 +3015,6 @@ void CleanupCustomizations(InstanceHandle handle) {
 using StyleConstant = std::pair<std::wstring, std::wstring>;
 using StyleConstants = std::vector<StyleConstant>;
 
-std::optional<StyleConstant> ParseStyleConstant(std::wstring_view constant) {
-    // Skip if commented.
-    if (constant.starts_with(L"//")) {
-        return std::nullopt;
-    }
-
-    auto eqPos = constant.find(L'=');
-    if (eqPos == constant.npos) {
-        Wh_Log(L"Skipping entry with no '=': %.*s",
-               static_cast<int>(constant.length()), constant.data());
-        return std::nullopt;
-    }
-
-    auto key = TrimStringView(constant.substr(0, eqPos));
-    auto val = TrimStringView(constant.substr(eqPos + 1));
-
-    return StyleConstant{std::wstring(key), std::wstring(val)};
-}
-
-StyleConstants LoadStyleConstants(
-    const std::vector<PCWSTR>& themeStyleConstants) {
-    StyleConstants result;
-
-    for (const auto themeStyleConstant : themeStyleConstants) {
-        if (auto parsed = ParseStyleConstant(themeStyleConstant)) {
-            result.push_back(std::move(*parsed));
-        }
-    }
-
-    for (int i = 0;; i++) {
-        string_setting_unique_ptr constantSetting(
-            Wh_GetStringSetting(L"styleConstants[%d]", i));
-        if (!*constantSetting.get()) {
-            break;
-        }
-
-        if (auto parsed = ParseStyleConstant(constantSetting.get())) {
-            result.push_back(std::move(*parsed));
-        }
-    }
-
-    // Reverse the order to allow overriding definitions with the same name.
-    std::reverse(result.begin(), result.end());
-
-    // Sort by name length to replace long names first.
-    std::stable_sort(result.begin(), result.end(),
-                     [](const StyleConstant& a, const StyleConstant& b) {
-                         return a.first.size() > b.first.size();
-                     });
-
-    return result;
-}
-
 std::wstring ApplyStyleConstants(std::wstring_view style,
                                  const StyleConstants& styleConstants) {
     std::wstring result;
@@ -2083,6 +3044,65 @@ std::wstring ApplyStyleConstants(std::wstring_view style,
 
     // Care for the rest after last occurrence.
     result += style.substr(lastPos);
+
+    return result;
+}
+
+std::optional<StyleConstant> ParseStyleConstant(
+    std::wstring_view constant,
+    const StyleConstants& styleConstants) {
+    // Skip if commented.
+    if (constant.starts_with(L"//")) {
+        return std::nullopt;
+    }
+
+    auto eqPos = constant.find(L'=');
+    if (eqPos == constant.npos) {
+        Wh_Log(L"Skipping entry with no '=': %.*s",
+               static_cast<int>(constant.length()), constant.data());
+        return std::nullopt;
+    }
+
+    auto key = TrimStringView(constant.substr(0, eqPos));
+    auto valueRaw = TrimStringView(constant.substr(eqPos + 1));
+    auto value = ApplyStyleConstants(valueRaw, styleConstants);
+
+    return StyleConstant{std::wstring(key), std::move(value)};
+}
+
+StyleConstants LoadStyleConstants(
+    const std::vector<PCWSTR>& themeStyleConstants) {
+    StyleConstants result;
+
+    auto addToResult = [&result](StyleConstant sc) {
+        // Keep sorted by name length to replace long names first. Reverse the
+        // order to allow overriding definitions with the same name.
+        auto insertIndex = std::lower_bound(
+            result.begin(), result.end(), sc,
+            [](const StyleConstant& a, const StyleConstant& b) {
+                return a.first.size() > b.first.size();
+            });
+
+        result.insert(insertIndex, std::move(sc));
+    };
+
+    for (const auto themeStyleConstant : themeStyleConstants) {
+        if (auto parsed = ParseStyleConstant(themeStyleConstant, result)) {
+            addToResult(std::move(*parsed));
+        }
+    }
+
+    for (int i = 0;; i++) {
+        string_setting_unique_ptr constantSetting(
+            Wh_GetStringSetting(L"styleConstants[%d]", i));
+        if (!*constantSetting.get()) {
+            break;
+        }
+
+        if (auto parsed = ParseStyleConstant(constantSetting.get(), result)) {
+            addToResult(std::move(*parsed));
+        }
+    }
 
     return result;
 }
@@ -2314,10 +3334,301 @@ bool ProcessSingleTargetStylesFromSettings(
     return true;
 }
 
+std::optional<ResourceVariableEntry> ParseResourceVariable(
+    std::wstring_view entry,
+    const StyleConstants& styleConstants) {
+    // Skip if commented.
+    if (entry.starts_with(L"//")) {
+        return std::nullopt;
+    }
+
+    // Find the first '=' to split key and value.
+    auto eqPos = entry.find(L'=');
+    if (eqPos == entry.npos) {
+        Wh_Log(L"Skipping entry with no '=': %.*s",
+               static_cast<int>(entry.length()), entry.data());
+        return std::nullopt;
+    }
+
+    auto keyPart = TrimStringView(entry.substr(0, eqPos));
+    auto valueRaw = TrimStringView(entry.substr(eqPos + 1));
+    auto value = ApplyStyleConstants(valueRaw, styleConstants);
+
+    constexpr std::wstring_view kThemeResourcePrefix = L"{ThemeResource ";
+
+    ResourceVariableType type = ResourceVariableType::String;
+    if (keyPart.size() > 0 && keyPart.back() == L':') {
+        type = ResourceVariableType::Xaml;
+        keyPart = keyPart.substr(0, keyPart.size() - 1);
+        keyPart = TrimStringView(keyPart);
+    } else if (value.starts_with(kThemeResourcePrefix) &&
+               value.ends_with(L"}")) {
+        type = ResourceVariableType::ThemeResourceReference;
+        value = TrimStringView(
+            value.substr(kThemeResourcePrefix.size(),
+                         value.size() - kThemeResourcePrefix.size() - 1));
+    }
+
+    ResourceVariableTheme theme = ResourceVariableTheme::None;
+    std::wstring key;
+
+    // Check for @theme suffix in key part.
+    auto atPos = keyPart.find(L'@');
+    if (atPos != keyPart.npos) {
+        key = TrimStringView(keyPart.substr(0, atPos));
+        auto themePart = TrimStringView(keyPart.substr(atPos + 1));
+        if (themePart == L"Dark") {
+            theme = ResourceVariableTheme::Dark;
+        } else if (themePart == L"Light") {
+            theme = ResourceVariableTheme::Light;
+        } else {
+            Wh_Log(L"Unknown theme '%.*s', expected 'Dark' or 'Light'",
+                   static_cast<int>(themePart.size()), themePart.data());
+            return std::nullopt;
+        }
+    } else {
+        key = std::wstring(keyPart);
+    }
+
+    return ResourceVariableEntry{std::move(key), std::move(value), theme, type};
+}
+
+winrt::Windows::Foundation::IInspectable ParseXamlValue(
+    std::wstring_view xamlValue) {
+    std::wstring xaml;
+    xaml += L"        <Setter Property=\"Tag\">\n";
+    xaml += L"            <Setter.Value>\n";
+    xaml += xamlValue;
+    xaml += L"\n";
+    xaml += L"            </Setter.Value>\n";
+    xaml += L"        </Setter>\n";
+
+    auto style = GetStyleFromXamlSetters(L"FrameworkElement", xaml);
+    return style.Setters().GetAt(0).as<Setter>().Value();
+}
+
+bool ProcessResourceVariable(ResourceDictionary resources,
+                             ResourceDictionary darkDict,
+                             ResourceDictionary lightDict,
+                             const ResourceVariableEntry& entry) {
+    auto boxedKey = winrt::box_value(entry.key);
+
+    if (entry.theme != ResourceVariableTheme::None) {
+        ResourceDictionary& targetDict =
+            entry.theme == ResourceVariableTheme::Dark ? darkDict : lightDict;
+
+        if (targetDict.HasKey(boxedKey)) {
+            Wh_Log(
+                L"Resource variable key '%s' already exists in theme '%s', "
+                L"skipping",
+                entry.key.c_str(),
+                entry.theme == ResourceVariableTheme::Dark ? L"Dark"
+                                                           : L"Light");
+            return false;
+        }
+
+        winrt::Windows::Foundation::IInspectable value;
+        switch (entry.type) {
+            case ResourceVariableType::String:
+                value = winrt::box_value(entry.value);
+                break;
+            case ResourceVariableType::Xaml:
+                value =
+                    entry.value.empty() ? nullptr : ParseXamlValue(entry.value);
+                break;
+            case ResourceVariableType::ThemeResourceReference:
+                value = resources.Lookup(winrt::box_value(entry.value));
+                break;
+        }
+
+        targetDict.Insert(boxedKey, value);
+
+        return true;
+    }
+
+    // key= - convert using existing resource type.
+    auto existingResource = resources.TryLookup(boxedKey);
+    if (!existingResource) {
+        Wh_Log(L"Resource variable key '%s' not found, skipping",
+               entry.key.c_str());
+        return false;
+    }
+
+    auto [it, inserted] =
+        g_originalResourceValues.try_emplace(entry.key, existingResource);
+    if (!inserted) {
+        Wh_Log(L"Resource variable key '%s' already modified, skipping",
+               entry.key.c_str());
+        return false;
+    }
+
+    winrt::Windows::Foundation::IInspectable value;
+    switch (entry.type) {
+        case ResourceVariableType::String: {
+            auto resourceClassName = winrt::get_class_name(existingResource);
+
+            // Unwrap IReference<T> to get inner type name.
+            if (resourceClassName.starts_with(
+                    L"Windows.Foundation.IReference`1<") &&
+                resourceClassName.ends_with(L'>')) {
+                size_t prefixSize =
+                    sizeof("Windows.Foundation.IReference`1<") - 1;
+                resourceClassName =
+                    winrt::hstring(resourceClassName.data() + prefixSize,
+                                   resourceClassName.size() - prefixSize - 1);
+            }
+
+            value = Markup::XamlBindingHelper::ConvertValue(
+                winrt::Windows::UI::Xaml::Interop::TypeName{resourceClassName},
+                winrt::box_value(entry.value));
+            break;
+        }
+
+        case ResourceVariableType::Xaml:
+            value = entry.value.empty() ? nullptr : ParseXamlValue(entry.value);
+            break;
+
+        case ResourceVariableType::ThemeResourceReference:
+            value = resources.Lookup(winrt::box_value(entry.value));
+            break;
+    }
+
+    resources.Insert(boxedKey, value);
+
+    return true;
+}
+
+void RefreshThemeResourceEntries() {
+    if (g_resourceVariables.empty()) {
+        return;
+    }
+
+    Wh_Log(L"Refreshing theme resource entries");
+
+    auto resources = Application::Current().Resources();
+
+    auto darkDict = g_resourceVariablesThemeDict.ThemeDictionaries()
+                        .TryLookup(winrt::box_value(L"Dark"))
+                        .try_as<ResourceDictionary>();
+    auto lightDict = g_resourceVariablesThemeDict.ThemeDictionaries()
+                         .TryLookup(winrt::box_value(L"Light"))
+                         .try_as<ResourceDictionary>();
+
+    for (const auto& entry : g_resourceVariables) {
+        if (entry.type != ResourceVariableType::ThemeResourceReference) {
+            continue;
+        }
+
+        try {
+            auto boxedKey = winrt::box_value(entry.key);
+            auto value = resources.Lookup(winrt::box_value(entry.value));
+
+            if (entry.theme == ResourceVariableTheme::Dark && darkDict) {
+                darkDict.Insert(boxedKey, value);
+            } else if (entry.theme == ResourceVariableTheme::Light &&
+                       lightDict) {
+                lightDict.Insert(boxedKey, value);
+            } else {
+                resources.Insert(boxedKey, value);
+            }
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error refreshing '%s': %08X", entry.key.c_str(),
+                   ex.code());
+        }
+    }
+}
+
+std::vector<ResourceVariableEntry> ProcessResourceVariablesFromSettings(
+    const StyleConstants& styleConstants,
+    const std::vector<PCWSTR>& themeResourceVariables) {
+    std::vector<ResourceVariableEntry> resourceVariables;
+
+    for (const auto& themeResourceVariable : themeResourceVariables) {
+        Wh_Log(L"Processing theme resource variable %s", themeResourceVariable);
+
+        auto parsed =
+            ParseResourceVariable(themeResourceVariable, styleConstants);
+        if (parsed) {
+            resourceVariables.push_back(std::move(*parsed));
+        }
+    }
+
+    for (int i = 0;; i++) {
+        string_setting_unique_ptr setting(
+            Wh_GetStringSetting(L"themeResourceVariables[%d]", i));
+        if (!*setting.get()) {
+            break;
+        }
+
+        Wh_Log(L"Processing resource variable %s", setting.get());
+
+        auto parsed = ParseResourceVariable(setting.get(), styleConstants);
+        if (parsed) {
+            resourceVariables.push_back(std::move(*parsed));
+        }
+    }
+
+    return resourceVariables;
+}
+
+void MergeResourceVariables() {
+    auto resources = Application::Current().Resources();
+
+    // Create theme dictionaries for @Dark/@Light resources.
+    g_resourceVariablesThemeDict = ResourceDictionary();
+    ResourceDictionary darkDict;
+    ResourceDictionary lightDict;
+    bool hasThemeResources = false;
+    bool hasThemeResourceReferences = false;
+
+    for (auto it = g_resourceVariables.rbegin();
+         it != g_resourceVariables.rend(); ++it) {
+        Wh_Log(L"Processing resource variable %s", it->key.c_str());
+
+        try {
+            if (ProcessResourceVariable(resources, darkDict, lightDict, *it)) {
+                if (it->theme != ResourceVariableTheme::None) {
+                    hasThemeResources = true;
+                }
+
+                if (it->type == ResourceVariableType::ThemeResourceReference) {
+                    hasThemeResourceReferences = true;
+                }
+            }
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        } catch (std::exception const& ex) {
+            Wh_Log(L"Error: %S", ex.what());
+        }
+    }
+
+    if (hasThemeResources) {
+        g_resourceVariablesThemeDict.ThemeDictionaries().Insert(
+            winrt::box_value(L"Dark"), darkDict);
+        g_resourceVariablesThemeDict.ThemeDictionaries().Insert(
+            winrt::box_value(L"Light"), lightDict);
+
+        resources.MergedDictionaries().Append(g_resourceVariablesThemeDict);
+    }
+
+    // Register for color changes to refresh theme resource references.
+    if (hasThemeResourceReferences) {
+        g_uiSettings = winrt::Windows::UI::ViewManagement::UISettings();
+        auto dispatcherQueue = winrt::Microsoft::UI::Dispatching::
+            DispatcherQueue::GetForCurrentThread();
+        g_colorValuesChangedToken =
+            g_uiSettings.ColorValuesChanged([dispatcherQueue](auto&&, auto&&) {
+                dispatcherQueue.TryEnqueue(RefreshThemeResourceEntries);
+            });
+    }
+}
+
 void ProcessAllStylesFromSettings() {
     // Initialize style constants without any pre-defined theme variables.
     // We pass an empty vector {} because we are not loading a hardcoded theme.
     StyleConstants styleConstants = LoadStyleConstants(std::vector<PCWSTR>{});
+
+    g_resourceVariables = ProcessResourceVariablesFromSettings(styleConstants, std::vector<PCWSTR>{});
 
     // Iterate through the user-defined styles (Target/Style pairs) from the settings.
     for (int i = 0;; i++) {
@@ -2333,61 +3644,48 @@ void ProcessAllStylesFromSettings() {
     }
 }
 
-bool ProcessSingleResourceVariableFromSettings(int index) {
-    string_setting_unique_ptr variableKeyStringSetting(
-        Wh_GetStringSetting(L"resourceVariables[%d].variableKey", index));
-    if (!*variableKeyStringSetting.get()) {
-        return false;
+void UninitializeResourceVariables() {
+    // Unregister color change handler.
+    if (g_colorValuesChangedToken) {
+        g_uiSettings.ColorValuesChanged(g_colorValuesChangedToken);
+        g_colorValuesChangedToken = {};
+    }
+    g_uiSettings = nullptr;
+    g_resourceVariables.clear();
+
+    if (g_originalResourceValues.empty() && !g_resourceVariablesThemeDict) {
+        return;
     }
 
-    Wh_Log(L"Processing resource variable %s", variableKeyStringSetting.get());
-
-    std::wstring_view variableKey = variableKeyStringSetting.get();
-
+    // Restore original resource values.
     auto resources = Application::Current().Resources();
-
-    auto resource = resources.Lookup(winrt::box_value(variableKey));
-
-    // Example: Windows.Foundation.IReference`1<Windows.UI.Xaml.Thickness>
-    auto resourceClassName = winrt::get_class_name(resource);
-    if (resourceClassName.starts_with(L"Windows.Foundation.IReference`1<") &&
-        resourceClassName.ends_with(L'>')) {
-        size_t prefixSize = sizeof("Windows.Foundation.IReference`1<") - 1;
-        resourceClassName =
-            winrt::hstring(resourceClassName.data() + prefixSize,
-                           resourceClassName.size() - prefixSize - 1);
-    }
-
-    auto resourceTypeName =
-        winrt::Windows::UI::Xaml::Interop::TypeName{resourceClassName};
-
-    string_setting_unique_ptr valueStringSetting(
-        Wh_GetStringSetting(L"resourceVariables[%d].value", index));
-
-    std::wstring_view value = valueStringSetting.get();
-
-    resources.Insert(winrt::box_value(variableKey),
-                     Markup::XamlBindingHelper::ConvertValue(
-                         resourceTypeName, winrt::box_value(value)));
-
-    return true;
-}
-
-void ProcessResourceVariablesFromSettings() {
-    for (int i = 0;; i++) {
+    for (const auto& [key, originalValue] : g_originalResourceValues) {
         try {
-            if (!ProcessSingleResourceVariableFromSettings(i)) {
-                break;
-            }
-        } catch (winrt::hresult_error const& ex) {
-            Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
-        } catch (std::exception const& ex) {
-            Wh_Log(L"Error: %S", ex.what());
+            resources.Insert(winrt::box_value(key), originalValue);
+        } catch (...) {
+            HRESULT hr = winrt::to_hresult();
+            Wh_Log(L"Error %08X", hr);
         }
+    }
+    g_originalResourceValues.clear();
+
+    // Remove our merged theme dictionary.
+    if (g_resourceVariablesThemeDict) {
+        auto merged = resources.MergedDictionaries();
+        uint32_t index;
+        if (merged.IndexOf(g_resourceVariablesThemeDict, index)) {
+            merged.RemoveAt(index);
+        }
+        g_resourceVariablesThemeDict = nullptr;
     }
 }
 
 void UninitializeForCurrentThread() {
+    // Clear failed image brushes list for this thread (revokers will
+    // automatically unregister).
+    g_failedImageBrushesForThread.failedImageBrushes.clear();
+    g_failedImageBrushesForThread.dispatcher = nullptr;
+
     for (const auto& [handle, elementCustomizationState] :
          g_elementsCustomizationState) {
         auto element = elementCustomizationState.element.get();
@@ -2402,6 +3700,8 @@ void UninitializeForCurrentThread() {
     g_elementsCustomizationState.clear();
 
     g_elementsCustomizationRules.clear();
+
+    UninitializeResourceVariables();
 
     g_initializedForThread = false;
 }
@@ -2421,7 +3721,6 @@ void InitializeForCurrentThread() {
     }
 
     ProcessAllStylesFromSettings();
-    ProcessResourceVariablesFromSettings();
 
     g_initializedForThread = true;
 }
@@ -2437,20 +3736,46 @@ void InitializeSettingsAndTap() {
     }
 }
 
-bool IsTargetWindow(HWND hWnd) {
+enum class TargetWindowType {
+    None,
+    FileExplorer,
+    XamlExplorerHost,
+};
+
+TargetWindowType GetTargetWindowType(HWND hWnd) {
     WCHAR className[64];
     if (!GetClassName(hWnd, className, ARRAYSIZE(className))) {
-        return false;
+        return TargetWindowType::None;
     }
 
-    return _wcsicmp(className, L"Microsoft.UI.Content.DesktopChildSiteBridge") == 0 ||
-           _wcsicmp(className, L"XamlExplorerHostIslandWindow_WASDK") == 0;
+    // Change to WinUI 3 app window class
+    if (_wcsicmp(className, L"Microsoft.UI.Content.DesktopChildSiteBridge") == 0) {
+        return TargetWindowType::FileExplorer;
+    }
+
+    // Used by the desktop context menu.
+    if (_wcsicmp(className, L"XamlExplorerHostIslandWindow_WASDK") == 0) {
+        return TargetWindowType::XamlExplorerHost;
+    }
+
+    return TargetWindowType::None;
+}
+
+void TriggerWindowCompositionUpdate(HWND hWnd) {
+    WINDOWPOS windowPos = {
+        .hwnd = hWnd,
+        .flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+    };
+    SendMessage(hWnd, WM_WINDOWPOSCHANGED, 0, (LPARAM)&windowPos);
+    SendMessage(hWnd, WM_DWMCOMPOSITIONCHANGED, 0, 0);
 }
 
 void OnWindowCreated(HWND hWnd, PCSTR funcName) {
-    if (IsTargetWindow(hWnd)) {
+    TargetWindowType windowType = GetTargetWindowType(hWnd);
+    if (windowType != TargetWindowType::None) {
         Wh_Log(L"Initializing - Created window %08X via %S",
                (DWORD)(ULONG_PTR)hWnd, funcName);
+
         InitializeForCurrentThread();
         InitializeSettingsAndTap();
     }
@@ -2562,6 +3887,125 @@ HWND WINAPI CreateWindowInBandEx_Hook(DWORD dwExStyle,
     return hWnd;
 }
 
+PFN_INITIALIZE_XAML_DIAGNOSTICS_EX InitializeXamlDiagnosticsEx_Original;
+HRESULT WINAPI
+InitializeXamlDiagnosticsEx_Hook(_In_ PCWSTR endPointName,
+                                 _In_ DWORD pid,
+                                 _In_ PCWSTR wszDllXamlDiagnostics,
+                                 _In_ PCWSTR wszTAPDllName,
+                                 _In_ CLSID tapClsid,
+                                 _In_opt_ PCWSTR wszInitializationData) {
+    if (g_inInjectWindhawkTAP) {
+        return InitializeXamlDiagnosticsEx_Original(
+            endPointName, pid, wszDllXamlDiagnostics, wszTAPDllName, tapClsid,
+            wszInitializationData);
+    }
+
+    bool blockCall = false;
+
+    switch (g_settings.xamlDiagnosticsHandling) {
+        case XamlDiagnosticsHandling::kAlert: {
+            void* retAddress = __builtin_return_address(0);
+
+            WCHAR modulePath[MAX_PATH];
+            PCWSTR modulePathStr = L"<unknown>";
+            HMODULE module;
+            if (GetModuleHandleEx(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    reinterpret_cast<LPCWSTR>(retAddress), &module)) {
+                switch (GetModuleFileName(module, modulePath,
+                                          ARRAYSIZE(modulePath))) {
+                    case 0:
+                    case ARRAYSIZE(modulePath):
+                        break;
+
+                    default:
+                        modulePathStr = modulePath;
+                        break;
+                }
+            }
+
+            WCHAR message[1024];
+            _snwprintf_s(
+                message, _TRUNCATE,
+                L"The following module is trying to use XAML diagnostics:\n\n"
+                L"%s\n\n"
+                L"There can only be one consumer at a time. Blocking it might "
+                L"break that module, but allowing it might break this mod.\n\n"
+                L"Do you want to block it?\n\n"
+                L"Note: You can change this behavior in the mod settings.",
+                modulePathStr);
+            int result = MessageBox(
+                nullptr, message, L"Windows 11 File Explorer Styler - Windhawk",
+                MB_YESNO | MB_ICONQUESTION | MB_TOPMOST);
+            blockCall = (result == IDYES);
+            break;
+        }
+
+        case XamlDiagnosticsHandling::kBlock:
+            blockCall = true;
+            break;
+
+        case XamlDiagnosticsHandling::kAllow:
+            blockCall = false;
+            break;
+    }
+
+    if (blockCall) {
+        Wh_Log(L"Blocking InitializeXamlDiagnosticsEx call");
+        // Return success to avoid exception in the caller.
+        return S_OK;
+    }
+
+    Wh_Log(L"Allowing InitializeXamlDiagnosticsEx call");
+    return InitializeXamlDiagnosticsEx_Original(
+        endPointName, pid, wszDllXamlDiagnostics, wszTAPDllName, tapClsid,
+        wszInitializationData);
+}
+
+void HookInitializeXamlDiagnosticsExIfNeeded() {
+    if (InitializeXamlDiagnosticsEx_Original) {
+        return;  // Already hooked
+    }
+
+    const HMODULE wux = GetModuleHandle(L"Microsoft.Internal.FrameworkUdk.dll");
+    if (!wux) {
+        return;  // DLL not loaded yet
+    }
+
+    const auto ixde = reinterpret_cast<PFN_INITIALIZE_XAML_DIAGNOSTICS_EX>(
+        GetProcAddress(wux, "InitializeXamlDiagnosticsEx"));
+    if (!ixde) {
+        return;
+    }
+
+    Wh_Log(L"Hooking InitializeXamlDiagnosticsEx to handle other consumers");
+    WindhawkUtils::SetFunctionHook(ixde, InitializeXamlDiagnosticsEx_Hook,
+                                   &InitializeXamlDiagnosticsEx_Original);
+    Wh_ApplyHookOperations();
+}
+
+using LoadLibraryExW_t = decltype(&LoadLibraryExW);
+LoadLibraryExW_t LoadLibraryExW_Original;
+HMODULE WINAPI LoadLibraryExW_Hook(LPCWSTR lpLibFileName,
+                                   HANDLE hFile,
+                                   DWORD dwFlags) {
+    HMODULE module = LoadLibraryExW_Original(lpLibFileName, hFile, dwFlags);
+
+    if (module && !InitializeXamlDiagnosticsEx_Original && lpLibFileName) {
+        PCWSTR fileName = wcsrchr(lpLibFileName, L'\\');
+        fileName = fileName ? fileName + 1 : lpLibFileName;
+        // CoreMessagingXP.dll loads Microsoft.Internal.FrameworkUdk.dll via the
+        // import table.
+        if (_wcsicmp(fileName, L"CoreMessagingXP.dll") == 0) {
+            HookInitializeXamlDiagnosticsExIfNeeded();
+        }
+    }
+
+    return module;
+}
+
 using RunFromWindowThreadProc_t = void(WINAPI*)(PVOID parameter);
 
 bool RunFromWindowThread(HWND hWnd,
@@ -2631,7 +4075,7 @@ std::vector<HWND> GetTargetWnds() {
                 return TRUE;
             }
 
-            if (IsTargetWindow(hWnd)) {
+            if (GetTargetWindowType(hWnd) != TargetWindowType::None) {
                 param.hWnds->push_back(hWnd);
             }
 
@@ -2654,17 +4098,6 @@ XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Hook(void* pThis,
     HRESULT ret =
         XamlIslandViewAdapter_get_DesiredSizeInPhysicalPixels_Original(pThis,
                                                                        size);
-
-    int explorerFrameContainerHeight = g_settings.explorerFrameContainerHeight;
-    if (!explorerFrameContainerHeight) {
-        explorerFrameContainerHeight = g_themeExplorerFrameContainerHeight;
-    }
-
-    if (SUCCEEDED(ret) && explorerFrameContainerHeight) {
-        int originalCy = size->cy;
-        size->cy = MulDiv(size->cy, explorerFrameContainerHeight, 136);
-        Wh_Log(L"%d -> %d", originalCy, size->cy);
-    }
 
     return ret;
 }
@@ -2700,7 +4133,7 @@ bool StartStatsTimer() {
     static constexpr WCHAR kStatsBaseUrl[] =
         L"https://github.com/ramensoftware/"
         L"windows-11-file-explorer-styling-guide/"
-        L"releases/download/stats-v1/";
+        L"releases/download/stats-v4/";
 
     ULONGLONG lastStatsTime = 0;
     Wh_GetBinaryValue(L"statsTimerLastTime", &lastStatsTime,
@@ -2763,6 +4196,8 @@ bool StartStatsTimer() {
                 std::wstring themeNameEscaped = themeName.get();
                 std::replace(themeNameEscaped.begin(), themeNameEscaped.end(),
                              L' ', L'_');
+                std::replace(themeNameEscaped.begin(), themeNameEscaped.end(),
+                             L'&', L'_');
 
                 std::wstring statsUrl = kStatsBaseUrl;
                 statsUrl += themeNameEscaped;
@@ -2819,8 +4254,15 @@ void StopStatsTimer() {
 }
 
 void LoadSettings() {
-    g_settings.explorerFrameContainerHeight =
-        Wh_GetIntSetting(L"explorerFrameContainerHeight");
+    PCWSTR xamlDiagnosticsHandling =
+        Wh_GetStringSetting(L"xamlDiagnosticsHandling");
+    g_settings.xamlDiagnosticsHandling = XamlDiagnosticsHandling::kAlert;
+    if (wcscmp(xamlDiagnosticsHandling, L"block") == 0) {
+        g_settings.xamlDiagnosticsHandling = XamlDiagnosticsHandling::kBlock;
+    } else if (wcscmp(xamlDiagnosticsHandling, L"allow") == 0) {
+        g_settings.xamlDiagnosticsHandling = XamlDiagnosticsHandling::kAllow;
+    }
+    Wh_FreeStringSetting(xamlDiagnosticsHandling);
 }
 
 BOOL Wh_ModInit() {
@@ -2828,30 +4270,38 @@ BOOL Wh_ModInit() {
 
     LoadSettings();
 
-    Wh_SetFunctionHook((void*)CreateWindowExW, (void*)CreateWindowExW_Hook,
-                       (void**)&CreateWindowExW_Original);
+    WindhawkUtils::SetFunctionHook(CreateWindowExW, CreateWindowExW_Hook,
+                                   &CreateWindowExW_Original);
 
     HMODULE user32Module =
         LoadLibraryEx(L"user32.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (user32Module) {
-        void* pCreateWindowInBand =
-            (void*)GetProcAddress(user32Module, "CreateWindowInBand");
+        auto pCreateWindowInBand = (CreateWindowInBand_t)GetProcAddress(
+            user32Module, "CreateWindowInBand");
         if (pCreateWindowInBand) {
-            Wh_SetFunctionHook(pCreateWindowInBand,
-                               (void*)CreateWindowInBand_Hook,
-                               (void**)&CreateWindowInBand_Original);
+            WindhawkUtils::SetFunctionHook(pCreateWindowInBand,
+                                           CreateWindowInBand_Hook,
+                                           &CreateWindowInBand_Original);
         }
 
-        void* pCreateWindowInBandEx =
-            (void*)GetProcAddress(user32Module, "CreateWindowInBandEx");
+        auto pCreateWindowInBandEx = (CreateWindowInBandEx_t)GetProcAddress(
+            user32Module, "CreateWindowInBandEx");
         if (pCreateWindowInBandEx) {
-            Wh_SetFunctionHook(pCreateWindowInBandEx,
-                               (void*)CreateWindowInBandEx_Hook,
-                               (void**)&CreateWindowInBandEx_Original);
+            WindhawkUtils::SetFunctionHook(pCreateWindowInBandEx,
+                                           CreateWindowInBandEx_Hook,
+                                           &CreateWindowInBandEx_Original);
         }
     }
 
-    HookWindowsUIFileExplorerSymbols();
+    HMODULE kernelBaseModule = GetModuleHandle(L"kernelbase.dll");
+    auto pKernelBaseLoadLibraryExW = (decltype(&LoadLibraryExW))GetProcAddress(
+        kernelBaseModule, "LoadLibraryExW");
+    WindhawkUtils::SetFunctionHook(pKernelBaseLoadLibraryExW,
+                                   LoadLibraryExW_Hook,
+                                   &LoadLibraryExW_Original);
+
+    // Hook immediately if DLL is already loaded.
+    HookInitializeXamlDiagnosticsExIfNeeded();
 
     StartStatsTimer();
 
@@ -2865,7 +4315,13 @@ void Wh_ModAfterInit() {
     for (auto hTargetWnd : hTargetWnds) {
         Wh_Log(L"Initializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
         RunFromWindowThread(
-            hTargetWnd, [](PVOID) { InitializeForCurrentThread(); }, nullptr);
+            hTargetWnd,
+            [](PVOID param) {
+
+                InitializeForCurrentThread();
+
+            },
+            (PVOID)hTargetWnd);
     }
 
     if (hTargetWnds.size() > 0) {
@@ -2885,7 +4341,32 @@ void Wh_ModUninit() {
     for (auto hTargetWnd : hTargetWnds) {
         Wh_Log(L"Uninitializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
         RunFromWindowThread(
-            hTargetWnd, [](PVOID) { UninitializeForCurrentThread(); }, nullptr);
+            hTargetWnd,
+            [](PVOID param) {
+
+                UninitializeForCurrentThread();
+
+            },
+            (PVOID)hTargetWnd);
+    }
+
+    // Unregister global network status change handler.
+    if (g_networkStatusChangedToken) {
+        try {
+            winrt::Windows::Networking::Connectivity::NetworkInformation::
+                NetworkStatusChanged(g_networkStatusChangedToken);
+            Wh_Log(L"Unregistered global network status change handler");
+        } catch (winrt::hresult_error const& ex) {
+            Wh_Log(L"Error unregistering network status handler %08X: %s",
+                   ex.code(), ex.message().c_str());
+        }
+        g_networkStatusChangedToken = {};
+    }
+
+    // Clear the dispatcher registry.
+    {
+        std::lock_guard<std::mutex> lock(g_failedImageBrushesRegistryMutex);
+        g_failedImageBrushesRegistry.clear();
     }
 }
 
@@ -2894,22 +4375,24 @@ void Wh_ModSettingsChanged() {
 
     UninitializeSettingsAndTap();
 
+    LoadSettings();
+
     auto hTargetWnds = GetTargetWnds();
     for (auto hTargetWnd : hTargetWnds) {
         Wh_Log(L"Reinitializing for %08X", (DWORD)(ULONG_PTR)hTargetWnd);
         RunFromWindowThread(
             hTargetWnd,
-            [](PVOID) {
+            [](PVOID param) {
+
                 UninitializeForCurrentThread();
                 InitializeForCurrentThread();
+
             },
-            nullptr);
+            (PVOID)hTargetWnd);
     }
 
     if (hTargetWnds.size() > 0) {
         Wh_Log(L"Reinitializing - Found target windows");
         InitializeSettingsAndTap();
     }
-
-    LoadSettings();
 }
