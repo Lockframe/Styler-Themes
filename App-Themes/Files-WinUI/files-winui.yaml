@@ -1,0 +1,423 @@
+styleConstants:
+  - subtleButtonHover=<SolidColorBrush Color="{ThemeResource SubtleFillColorSecondary}"/>
+  - subtleButtonPress=<SolidColorBrush Color="{ThemeResource SubtleFillColorTertiary}"/>
+  - button=<SolidColorBrush Color="{ThemeResource ControlFillColorDefault}"/>
+  - buttonHover=<SolidColorBrush Color="{ThemeResource ControlFillColorSecondary}"/>
+  - buttonPress=<SolidColorBrush Color="{ThemeResource ControlFillColorTertiary}"/>
+  - textPrimary=<SolidColorBrush Color="{ThemeResource TextFillColorPrimary}"/>
+  - textSecondary=<SolidColorBrush Color="{ThemeResource TextFillColorSecondary}"/>
+  - textInverse=<SolidColorBrush Color="{ThemeResource TextFillColorInverse}"/>
+  - textDisabled=<SolidColorBrush Color="{ThemeResource TextFillColorDisabled}"/>
+  - surfaceFlyoutStroke=<SolidColorBrush Color="{ThemeResource SurfaceStrokeColorFlyout}"/>
+  - accent=<SolidColorBrush Color="{ThemeResource autoAccent}"/>
+  - customColor=<SolidColorBrush Color="{ThemeResource customColor}"/>
+  - selectStroke=<SolidColorBrush Color="{ThemeResource selectStroke}"/>
+controlStyles:
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#InnerNavigationToolbar > Grid#RootGrid
+    styles:
+      - Background:=$customColor
+      - BorderThickness=1,1,0,0
+      - CornerRadius=8,0,0,0
+      - BorderBrush:=$surfaceFlyoutStroke
+  - target: Files.App.UserControls.Toolbar#InnerNavigationToolbar
+    styles:
+      - Margin:=0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#RootPage > Grid#RootGrid
+    styles:
+      - CornerRadius=0
+      - Background:=$button
+      - BorderThickness=1,1,0,0
+      - Shadow:=
+      - BorderBrush:=$surfaceFlyoutStroke
+      - Margin=0,0,0,-9
+  - target: //Microsoft.UI.Xaml.IUIElementOverrides#StatusBar > Grid
+    styles:
+      - Background:=$button
+      - BorderThickness=1,0,0,0
+      - BorderBrush:=$surfaceFlyoutStroke
+      - Height=36
+  - target: GridViewItem > Microsoft.UI.Xaml.Controls.Primitives.ListViewItemPresenter#Root
+    styles:
+      - CornerRadius=4
+      - PointerOverBackground:=$subtleButtonHover
+      - PointerOverForeground:=$textPrimary
+      - SelectedForeground:=$textPrimary
+      - SelectedBackground:=$subtleButtonPress
+      - SelectedPressedBackground:=$subtleButtonPress
+      - PressedBackground:=$subtleButtonPress
+      - Background:=#00000000
+  - target: Grid#RootPanel@PointerStates > Border#ElementBorder > Grid#ElementGrid
+    styles:
+      - BorderThickness=1
+      - Background@NormalSelected:=$subtleButtonHover
+      - Background@PointerOverSelected:=$subtleButtonPress
+      - Background@PointerOver:=$subtleButtonHover
+      - Background@Pressed:=$subtleButtonPress
+      - Background@PressedSelected:=$subtleButtonPress
+      - Background@DragOnTop:=$subtleButtonHover
+      - Background@DragInsertAbove:=$subtleButtonHover
+      - Background@DragInsetBelow:=$subtleButtonHover
+      - CornerRadius=4
+      - Background:=#00000000
+      - Background@Normal:=#00000000
+      - BorderBrush:=#00000000
+      - BorderBrush@NormalSelected:=$selectStroke
+      - BorderBrush@PointerOverSelected:=$selectStroke
+      - BorderBrush@@PressedSelected:=$selectStroke
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#NavToolbar > Grid > StackPanel > Button > ContentPresenter#ContentPresenter@CommonStates
+    styles:
+      - Background@PointerOver:=$subtleButtonHover
+      - Background@Pressed:=$subtleButtonPress
+      - BorderThickness=0
+      - Width=32
+      - Background@Normal:=#00000000
+      - Background:=#00000000
+  - target: ContentPresenter#ItemDecoratorPresenter
+    styles:
+      - Visibility=1
+  - target: FontIcon#PinIcon
+    styles:
+      - Visibility=1
+  - target: //Microsoft.UI.Xaml.IUIElementOverrides#StatusBar > Grid > StackPanel
+    styles:
+      - Margin=5,0,0,2
+  - target: Files.App.Controls.OmnibarMode
+    styles:
+      - CornerRadius=4
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Desktop -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Downloads -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[3] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Documents -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[4] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Images -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[5] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Music -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[6] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Videos -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[7] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Chrome -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[8] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<Viewbox Width="16" Height="16" Stretch="Uniform"><!-- GitHub--><PathIcon Data="F1 M1024,1024z M0,0z M512,11.5C559,11.5 604.333,17.5834 648,29.75 691.667,41.9167 732.417,59.1667 770.25,81.5 808.083,103.833 842.583,130.583 873.75,161.75 904.917,192.917 931.667,227.417 954,265.25 976.333,303.083 993.583,343.833 1005.75,387.5 1017.92,431.167 1024,476.5 1024,523.5 1024,578.5 1015.58,631.5 998.75,682.5 981.917,733.5 958.167,780.333 927.5,823 896.833,865.667 860,903.083 817,935.25 774,967.417 726.333,992.167 674,1009.5 673,1009.83 671.5,1010.08 669.5,1010.25 667.5,1010.42 666,1010.5 665,1010.5 657.333,1010.5 651.083,1008.25 646.25,1003.75 641.417,999.25 639,993 639,985 639,961.333 639.083,937.917 639.25,914.75 639.417,891.583 639.5,868.167 639.5,844.5 639.5,827.5 637,810.333 632,793 627,775.667 618,761.167 605,749.5 644,745.167 678.167,737.083 707.5,725.25 736.833,713.417 761.167,697.333 780.5,677 799.833,656.667 814.333,631.667 824,602 833.667,572.333 838.5,537.333 838.5,497 838.5,471 834.25,446.333 825.75,423 817.25,399.667 804,378.5 786,359.5 789.667,350.167 792.333,340.5 794,330.5 795.667,320.5 796.5,310.5 796.5,300.5 796.5,287.5 795.083,274.583 792.25,261.75 789.417,248.917 785.667,236.333 781,224 780,223.333 778.917,223 777.75,223 776.583,223 775.5,223 774.5,223 762.833,223 751,224.583 739,227.75 727,230.917 715.25,235 703.75,240 692.25,245 681.083,250.75 670.25,257.25 659.417,263.75 649.333,270.167 640,276.5 598,264.833 555.333,259 512,259 468.667,259 426,264.833 384,276.5 374.333,270.167 364.083,263.833 353.25,257.5 342.417,251.167 331.25,245.417 319.75,240.25 308.25,235.083 296.583,230.917 284.75,227.75 272.917,224.583 261.167,223 249.5,223 248.5,223 247.417,223 246.25,223 245.083,223 244,223.333 243,224 238.333,236.333 234.583,248.917 231.75,261.75 228.917,274.583 227.5,287.5 227.5,300.5 227.5,310.5 228.333,320.5 230,330.5 231.667,340.5 234.333,350.167 238,359.5 220,378.5 206.75,399.667 198.25,423 189.75,446.333 185.5,471 185.5,497 185.5,537 190.333,571.833 200,601.5 209.667,631.167 224.167,656.25 243.5,676.75 262.833,697.25 287.083,713.5 316.25,725.5 345.417,737.5 379.5,745.667 418.5,750 408.833,758.667 401.417,769.083 396.25,781.25 391.083,793.417 387.667,805.833 386,818.5 377,822.833 367.5,826.167 357.5,828.5 347.5,830.833 337.5,832 327.5,832 311.833,832 298.667,829.333 288,824 277.333,818.667 267.917,811.917 259.75,803.75 251.583,795.583 244.167,786.833 237.5,777.5 230.833,768.167 223.833,759.417 216.5,751.25 209.167,743.083 200.917,736.333 191.75,731 182.583,725.667 171.5,723 158.5,723 157.167,723 155.167,723.083 152.5,723.25 149.833,723.417 147.25,723.833 144.75,724.5 142.25,725.167 140,726.167 138,727.5 136,728.833 135,730.5 135,732.5 135,737.167 137.583,741.25 142.75,744.75 147.917,748.25 152,751.333 155,754 163,760 169.667,765.667 175,771 180.333,776.333 185,781.833 189,787.5 193,793.167 196.75,799.25 200.25,805.75 203.75,812.25 207.667,820 212,829 224.667,855.333 240.667,874.333 260,886 279.333,897.667 303.667,903.5 333,903.5 341.667,903.5 350.333,902.917 359,901.75 367.667,900.583 376.333,899.167 385,897.5L385,984.5C385,992.5 382.583,998.833 377.75,1003.5 372.917,1008.17 366.5,1010.5 358.5,1010.5 355.5,1010.5 352.667,1010.17 350,1009.5 297.667,992.167 250,967.5 207,935.5 164,903.5 127.167,866.167 96.5,823.5 65.8333,780.833 42.0833,733.917 25.25,682.75 8.41667,631.583 0,578.5 0,523.5 0,476.5 6.08333,431.167 18.25,387.5 30.4167,343.833 47.6667,303.083 70,265.25 92.3333,227.417 119.083,192.917 150.25,161.75 181.417,130.583 215.917,103.833 253.75,81.5 291.583,59.1667 332.333,41.9167 376,29.75 419.667,17.5834 465,11.5 512,11.5z" /></Viewbox>
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[9] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- ForWindhawk -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[10] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- 'Unreleased mods' folder -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[11] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- 'mine' folder -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides[12] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Trashbin --><Viewbox Width="16" Height="16" Stretch="Uniform"><!-- Trash --><PathIcon Data="F1 M 5.419922 20 C 5.107422 20 4.807942 19.943033 4.521484 19.829102 C 4.235026 19.71517 3.98112 19.55892 3.759766 19.360352 C 3.538411 19.161783 3.35612 18.927408 3.212891 18.657227 C 3.069661 18.387045 2.978516 18.095703 2.939453 17.783203 L 1.376953 4.228516 C 1.370443 4.176434 1.36556 4.125978 1.362305 4.077148 C 1.359049 4.028321 1.357422 3.977865 1.357422 3.925781 C 1.357422 3.541668 1.438802 3.183594 1.601562 2.851562 C 1.764323 2.519531 1.995443 2.233074 2.294922 1.992188 L 4.091797 0.546875 C 4.306641 0.377605 4.552409 0.244141 4.829102 0.146484 C 5.105794 0.048828 5.380859 0 5.654297 0 L 14.345703 0 C 14.619141 0 14.894205 0.048828 15.170898 0.146484 C 15.44759 0.244141 15.693358 0.377605 15.908203 0.546875 L 17.705078 1.992188 C 17.998047 2.226562 18.229166 2.516277 18.398438 2.861328 C 18.567707 3.206381 18.652344 3.567709 18.652344 3.945312 C 18.652344 3.990887 18.650715 4.038086 18.647461 4.086914 C 18.644205 4.135742 18.639322 4.182943 18.632812 4.228516 L 17.060547 17.783203 C 17.021484 18.095703 16.930338 18.387045 16.787109 18.657227 C 16.643879 18.927408 16.461588 19.161783 16.240234 19.360352 C 16.018879 19.55892 15.766601 19.71517 15.483398 19.829102 C 15.200194 19.943033 14.899088 20 14.580078 20 Z M 3.662109 2.5 L 16.347656 2.5 L 15.126953 1.523438 C 14.892578 1.341146 14.632161 1.25 14.345703 1.25 L 5.654297 1.25 C 5.367838 1.25 5.107422 1.341146 4.873047 1.523438 Z M 14.580078 18.75 C 14.905599 18.75 15.183919 18.645834 15.415039 18.4375 C 15.646158 18.229166 15.781249 17.965494 15.820312 17.646484 L 17.382812 4.082031 C 17.389322 4.04948 17.392578 4.003907 17.392578 3.945312 C 17.392578 3.912762 17.392578 3.880209 17.392578 3.847656 C 17.392578 3.815105 17.389322 3.782553 17.382812 3.75 L 2.617188 3.75 C 2.610677 3.782553 2.607422 3.815105 2.607422 3.847656 C 2.607422 3.880209 2.607422 3.912762 2.607422 3.945312 C 2.607422 4.003907 2.610677 4.04948 2.617188 4.082031 L 4.179688 17.646484 C 4.21875 17.972006 4.352213 18.237305 4.580078 18.442383 C 4.807942 18.647461 5.087891 18.75 5.419922 18.75 Z M 12.558594 10.673828 L 10.205078 10.458984 L 10.878906 9.960938 L 9.882812 8.027344 L 8.974609 9.814453 L 7.597656 9.121094 L 8.251953 7.832031 C 8.356119 7.610678 8.528646 7.5 8.769531 7.5 L 11.152344 7.5 C 11.393229 7.5 11.56901 7.607422 11.679688 7.822266 L 12.255859 8.916016 L 12.880859 8.4375 Z M 7.382812 14.990234 C 7.272135 14.990234 7.179362 14.967448 7.104492 14.921875 C 7.029622 14.876303 6.966146 14.819336 6.914062 14.750977 C 6.861979 14.682617 6.814778 14.60612 6.772461 14.521484 C 6.730143 14.43685 6.686197 14.352214 6.640625 14.267578 C 6.582031 14.163412 6.523438 14.0625 6.464844 13.964844 C 6.40625 13.867188 6.347656 13.766276 6.289062 13.662109 C 6.269531 13.629558 6.235352 13.570964 6.186523 13.486328 C 6.137695 13.401693 6.088867 13.30892 6.040039 13.208008 C 5.991211 13.107097 5.947266 13.00944 5.908203 12.915039 C 5.869141 12.820639 5.849609 12.744141 5.849609 12.685547 C 5.849609 12.581381 5.875651 12.462565 5.927734 12.329102 C 5.979817 12.195639 6.043294 12.062175 6.118164 11.928711 C 6.193034 11.795248 6.269531 11.669922 6.347656 11.552734 C 6.425781 11.435547 6.490885 11.337891 6.542969 11.259766 L 5.849609 10.712891 L 7.978516 10.712891 L 8.486328 12.802734 L 7.65625 12.148438 L 7.060547 13.349609 L 9.042969 13.349609 L 9.042969 14.990234 Z M 11.201172 15.712891 L 9.863281 13.916016 L 11.201172 12.275391 L 11.201172 13.388672 L 12.958984 13.388672 L 12.236328 12.060547 L 13.554688 11.279297 C 13.59375 11.363933 13.647461 11.464844 13.71582 11.582031 C 13.78418 11.699219 13.849283 11.819662 13.911133 11.943359 C 13.97298 12.067058 14.028319 12.1875 14.077148 12.304688 C 14.125976 12.421875 14.15039 12.519531 14.150391 12.597656 C 14.15039 12.64974 14.143879 12.695312 14.130859 12.734375 C 14.117838 12.773438 14.101562 12.815756 14.082031 12.861328 L 13.164062 14.677734 C 13.059895 14.886068 12.887369 14.990234 12.646484 14.990234 L 11.201172 14.990234 Z " /></Viewbox>
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Home -->
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[3] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- Drive -->
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[4] > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Content:=<!-- OneDrive -->
+  - target: Grid#RootGrid@CheckStates > Grid#ContainerGrid > Border#SelectionPill
+    styles:
+      - Background@Checked:=$accent
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#InfoPane > Grid
+    styles:
+      - CornerRadius=0
+      - Background:=$button
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > ContentPresenter#ContentPresenter
+    styles:
+      - Margin=0
+  - target: TextBlock#HeaderTextBlock
+    styles:
+      - FontWeight=Normal
+  - target: Files.App.Controls.GridSplitter#PaneSplitter
+    styles:
+      - Margin=-4,0,0,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#Omnibar > Grid > TextBox > Grid > Border#BorderElement
+    styles:
+      - Height=32
+      - BorderBrush:=
+      - Style:=<Style TargetType="Border"><Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}"/></Style>
+      - CornerRadius=4
+  - target: ListViewItem
+    styles:
+      - FocusVisualPrimaryThickness=0
+      - FocusVisualSecondaryThickness=0
+  - target: GridViewItem
+    styles:
+      - FocusVisualPrimaryThickness=0
+      - FocusVisualSecondaryThickness=0
+  - target: Grid#HeaderGrid > Files.App.Controls.GridSplitter
+    styles:
+      - Margin=0,8,0,8
+  - target: AppBarButton#NewEmptySpaceAppBarButton > Grid#Root > Grid#ContentRoot > Grid#SubItemChevronPanel
+    styles:
+      - Margin=5,0,1,0
+  - target: AppBarButton#NewEmptySpaceAppBarButton > Grid#Root > Grid#ContentRoot > Grid#SubItemChevronPanel > FontIcon#SubItemChevron > Grid > TextBlock
+    styles:
+      - Foreground:=$textPrimary
+  - target: Grid#HeaderGrid > Microsoft.UI.Xaml.IUIElementOverrides > Grid > Button > ContentPresenter > Grid
+    styles:
+      - Transform3D:=<CompositeTransform3D TranslateY="-6" />
+  - target: Grid#HeaderGrid > Microsoft.UI.Xaml.IUIElementOverrides > Grid
+    styles:
+      - Height=31
+      - CornerRadius=4
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid
+    styles:
+      - Margin=0,-8,0,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > Microsoft.UI.Xaml.Controls.ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > Microsoft.UI.Xaml.Controls.ScrollContentPresenter > Microsoft.UI.Xaml.Controls.ItemsRepeater > Files.App.Controls.SidebarItem
+    styles:
+      - Margin=0,0,0,-8
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#NameHeader > Grid > Button > ContentPresenter > Grid > TextBlock#HeaderTextBlock
+    styles:
+      - Transform3D:=<CompositeTransform3D TranslateX="1" />
+  - target: ListViewHeaderItem > Grid#HeaderItemRootGrid
+    styles:
+      - VerticalAlignment=1
+      - Height=32
+      - Padding=16,0,16,0
+  - target: ListViewHeaderItem > Grid#HeaderItemRootGrid > Rectangle
+    styles:
+      - Margin=8,0,0,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Height=40
+      - Margin=-4,0,-4,0
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Height=40
+  - target: ListViewHeaderItem > Grid#HeaderItemRootGrid > ContentPresenter#ContentPresenter
+    styles:
+      - Margin=0,0,0,2
+  - target: ItemsRepeater#PART_MainItemsRepeater > Microsoft.UI.Xaml.IUIElementOverrides > Grid#PART_LayoutRoot
+    styles:
+      - Margin=0,4,0,4
+  - target: Files.App.Controls.BreadcrumbBarItem#PART_RootBreadcrumbBarItem
+    styles:
+      - Padding=8,0,8,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#PART_RootBreadcrumbBarItem > Grid#PART_LayoutRoot > StackPanel > Button#PART_ItemContentButton > ContentPresenter
+    styles:
+      - Margin=2,4,0,4
+      - Content:=
+      - FontFamily=Segoe Fluent Icons
+      - FontSize=14
+      - Foreground:=$textSecondary
+      - CornerRadius=2
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#PART_RootBreadcrumbBarItem > Grid#PART_LayoutRoot > StackPanel > Button#PART_ItemContentButton > ContentPresenter > ContentPresenter
+    styles:
+      - Visibility=1
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#PART_RootBreadcrumbBarItem > Grid#PART_LayoutRoot > StackPanel > Button#PART_ItemChevronButton
+    styles:
+      - CornerRadius=2
+      - Margin=0,4,0,4
+  - target: Grid#PART_RootGrid > Button#PART_ModeButton > ContentPresenter#ContentPresenter
+    styles:
+      - Margin=0,4,0,4
+  - target: Grid#PaneColumnGrid > ContentPresenter > StackPanel > Border
+    styles:
+      - BorderThickness=0
+  - target: Button#SettingsButton
+    styles:
+      - Height=36
+      - Padding=11,0,0,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#PART_EllipsisBreadcrumbBarItem > Grid#PART_LayoutRoot
+    styles:
+      - Margin=0,4,0,4
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Margin=-4,0,-4,0
+  - target: TextBlock#ItemNameTextBlock
+    styles:
+      - FontWeight=normal
+  - target: ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Margin=9,0,0,0
+  - target: ItemsRepeater#ChildrenPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > TextBlock#ItemNameTextBlock
+    styles:
+      - Margin=16,0,12,2
+  - target: ItemsRepeater > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > ContentPresenter#IconPresenter
+    styles:
+      - Margin=9,0,0,0
+  - target: ItemsRepeater > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder > Grid#ElementGrid > TextBlock#ItemNameTextBlock
+    styles:
+      - Margin=16,0,12,2
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SettingsButton > Grid > Border
+    styles:
+      - Height:=40
+      - Margin=-4,0,-4,0
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SettingsButton > Grid > Border > Grid > ContentPresenter#IconPresenter
+    styles:
+      - Margin=9,0,0,0
+      - Content:=
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SettingsButton > Grid > Border > Grid > TextBlock#ItemNameTextBlock
+    styles:
+      - Margin=16,0,0,0
+  - target: Files.App.Controls.OmnibarMode#OmnibarCommandPaletteMode
+    styles:
+      - Visibility=1
+  - target: Grid#PART_ModesHostGrid > Files.App.Controls.OmnibarModeSeparator[2]
+    styles:
+      - Visibility=1
+  - target: Button#SettingsButton > ContentPresenter > Grid > TextBlock
+    styles:
+      - Margin=17,0,0,0
+  - target: Microsoft.UI.Xaml.Controls.InfoBadge#StatusInfoBadge
+    styles:
+      - MaxHeight=18
+      - Height=18
+      - Width=18
+  - target: Grid#TabContainer > Button#CloseButton
+    styles:
+      - Margin=4,1,-1,-1
+  - target: Button#TabBarAddNewTabButton
+    styles:
+      - Height=24
+      - Width=32
+  - target: Button#TabBarAddNewTabButton > ContentPresenter@CommonStates
+    styles:
+      - BorderThickness=0
+      - Background@PointerOver:=$subtleButtonHover
+      - Background@Pressed:=$subtleButtonPress
+      - Background:=#00000000
+      - Padding=0
+  - target: Grid#TabContainer > Button#CloseButton > ContentPresenter@CommonStates
+    styles:
+      - Background@PointerOver:=$subtleButtonHover
+      - Background@Pressed:=$subtleButtonPress
+      - Background:=#00000000
+  - target: Button#TabBarAddNewTabButton > ContentPresenter > FontIcon
+    styles:
+      - FontSize=16
+  - target: Grid#TabContainer > Button#CloseButton > ContentPresenter#ContentPresenter > TextBlock
+    styles:
+      - FontSize=8
+      - Text=
+  - target: TabView#HorizontalTabView
+    styles:
+      - Margin=0,7,0,0
+  - target: Border#TabSeparator
+    styles:
+      - Visibility=1
+  - target: TabViewItem > Grid#LayoutRoot >  Microsoft.UI.Xaml.Shapes.Path#SelectedBackgroundPath
+    styles:
+      - Height=32
+  - target: ContentPresenter#IconPresenter > ImageIcon
+    styles:
+      - Visibility=1
+  - target: ContentPresenter#IconPresenter
+    styles:
+      - FontFamily=Segoe Fluent Icons
+      - FontSize=16
+      - Foreground:=$textPrimary
+  - target: AppBarButton#NewEmptySpaceAppBarButton > Grid > Grid > Viewbox
+    styles:
+      - Height=16
+      - Width=16
+  - target: TextBlock#KeyboardAcceleratorTextLabel
+    styles:
+      - Visibility=1
+  - target: AppBarButton
+    styles:
+      - ContentTransitions:=
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[2] > Grid#RootPanel
+    styles:
+      - BorderThickness=0,1,0,1
+      - BorderBrush:=<SolidColorBrush Color="{ThemeResource ControlStrokeColorDefault}"/>
+      - Margin=-4,0,-4,0
+      - Padding=8,0,8,0
+  - target: ItemsRepeater#MenuItemsHost > Files.App.Controls.SidebarItem[3]
+    styles:
+      - Margin=0,10,0,-10
+  - target: ItemsRepeater#MenuItemsHost
+    styles:
+      - Margin=4,5,4,4
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#NavToolbar > Grid > StackPanel > Button > ContentPresenter@CommonStates > FontIcon
+    styles:
+      - Foreground:=$textPrimary
+      - Foreground@Disabled:=$textDisabled
+      - Foreground@Pressed:=$textSecondary
+      - FontSize=14
+  - target: Button#Up
+    styles:
+      - Visibility=1
+  - target: AppBarButton#SelectionOptions
+    styles:
+      - Visibility=1
+  - target: AppBarButton[Label=Novo] > Grid > Grid > Viewbox > Border > ContentPresenter > Microsoft.UI.Xaml.IUIElementOverrides > Grid > Viewbox > Border > Canvas > Files.App.Controls.ThemedIconLayer[1]
+    styles:
+      - Visibility=1
+  - target: AppBarButton#NewEmptySpaceAppBarButton > Grid#Root > Grid#ContentRoot > TextBlock#TextLabel
+    styles:
+      - RenderTransform:=<TranslateTransform Y="0"/> <!-- Vertically align 'New' label for command bar button -->
+  - target: AppBarButton#LayoutOptionsButton > Grid
+    styles:
+      - Width=51
+  - target: AppBarButton#ArrangementOptions > Grid
+    styles:
+      - Width=54
+  - target: //Files.App.UserControls.TabBar.TabBar#TabControl
+    styles:
+      - Canvas.ZIndex=-1
+      - Opacity=0
+      - Margin=0,0,0,-48
+  - target: //Button#ShowStatusCenterButton
+    styles:
+      - Margin=0,0,140,0
+  - target: //Files.App.Controls.Omnibar#Omnibar
+    styles:
+      - MaxWidth=600
+  - target: //Button#Up
+    styles:
+      - Margin=-166,0,0,0
+  - target: //Button#Up > ContentPresenter > FontIcon > Grid
+    styles:
+      - Background:=<ImageBrush Stretch="Uniform" ImageSource="C:\Users\Jhen\Pictures\Icons\Extracted Icons\Explorer\Explorer_32.png"/>
+      - Height=16
+      - Width=16
+  - target: //Button#Up > ContentPresenter > FontIcon > Grid > TextBlock
+    styles:
+      - Foreground=transparent
+  - target: Button#FlyoutButton
+    styles:
+      - Visibility=0
+      - Margin=-90,0,0,0
+  - target: //Button#FlyoutButton > ContentPresenter > FontIcon > Grid > TextBlock
+    styles:
+      - FontFamily=Segoe UI Variable
+      - Text=Files
+  - target: //Button#Back
+    styles:
+      - Margin=84,0,0,0
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder > Grid > TextBlock#ItemNameTextBlock
+    styles:
+      - RenderTransform:=<TranslateTransform X="0" Y="1"/> <!-- collapsible header font -->
+  - target: ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Height=40
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter#ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Height:=0<!-- hide SIDEBAR collapsible headers -->
+  - target: Microsoft.UI.Xaml.IUIElementOverrides#SidebarControl > Grid > Grid#PaneColumnGrid > ItemsRepeaterScrollHost > ScrollViewer#MenuItemHostScrollViewer > Border#Root > Grid > ScrollContentPresenter#ScrollContentPresenter > ItemsRepeater#MenuItemsHost > Microsoft.UI.Xaml.IUIElementOverrides[1] > Grid#RootPanel > Border#ElementBorder
+    styles:
+      - Height:=40<!-- SETTINGS page sidebar item height -->
+themeResourceVariables:
+  - autoAccent@Light={ThemeResource SystemAccentColorDark1}
+  - autoAccent@Dark={ThemeResource SystemAccentColorLight2}
+  - customColor@Light=#BFFFFFFF
+  - customColor@Dark=#0AFFFFFF
+  - selectStroke@Light=#00000000
+  - selectStroke@Dark=#1A000000
+xamlDiagnosticsHandling: ''

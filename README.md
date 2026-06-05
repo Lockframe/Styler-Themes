@@ -99,7 +99,7 @@ A theme meant to remove the Fabric UI elements from the [Files app](https://file
 >[!WARNING]
 >You will need to manually edit the theme to ensure the proper glyphs are used for your own sidebar scheme.
 
-[Light](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-light.json) [Dark](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-dark.json)
+[YAML](https://github.com/Lockframe/Styler-Themes/blob/main/App-Themes/Files-WinUI/files-winui.yaml)
 
 
 ### Tabless Files-WinUI
