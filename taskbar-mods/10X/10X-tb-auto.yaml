@@ -1,0 +1,264 @@
+theme: ''
+styleConstants:
+  - button=<SolidColorBrush Color="{ThemeResource ControlFillColorDefault}"/>
+  - buttonHover=<SolidColorBrush Color="{ThemeResource ControlFillColorSecondary}"/>
+  - buttonPress=<SolidColorBrush Color="{ThemeResource ControlFillColorTertiary}"/>
+  - subtleButtonHover=<SolidColorBrush Color="{ThemeResource SubtleFillColorSecondary}"/>
+  - subtleButtonPress=<SolidColorBrush Color="{ThemeResource SubtleFillColorTertiary}"/>
+  - accent=<SolidColorBrush Color="{ThemeResource SystemAccentColor}"/>
+  - accentHover=<SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity=".9"/>
+  - accentPress=<SolidColorBrush Color="{ThemeResource SystemAccentColor}" Opacity=".8"/>
+  - textPrimary=<SolidColorBrush Color="{ThemeResource TextFillColorPrimary}"/>
+  - textSecondary=<SolidColorBrush Color="{ThemeResource TextFillColorSecondary}"/>
+  - textDisabled=<SolidColorBrush Color="{ThemeResource TextFillColorDisabled}"/>
+  - textInverse=<SolidColorBrush Color="{ThemeResource TextFillColorInverse}"/>
+  - acrylic=<AcrylicBrush TintColor="{ThemeResource SystemChromeMediumColor}" FallbackColor="{ThemeResource SystemChromeMediumColor}" TintOpacity="0" TintLuminosityOpacity="1"/>
+  - taskViewRest=<Viewbox Width="48" Height="48" Stretch="None" IsHitTestVisible="False"> <Grid Margin="-14,-16,0,0" IsHitTestVisible="False"> <PathIcon x:Name="Top" Data="M30,17C30.5523,17,31,17.4477,31,18L31,19 18,19C16.8954,19,16,19.8954,16,21L16,29 15,29C14.4477,29,14,28.5523,14,28L14,18C14,17.4477,14.4477,17,15,17L30,17z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="Bottom" Data="M33,20L18,20C17.4477,20,17,20.4477,17,21L17,31C17,31.5523,17.4477,32,18,32L33,32C33.5523,32,34,31.5523,34,31L34,21C34,20.4477,33.5523,20,33,20z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> </Grid> </Viewbox>
+  - taskViewActive=<Viewbox Width="48" Height="48" Stretch="None" IsHitTestVisible="False"><Grid Margin="-18,-12,0,0" IsHitTestVisible="False"><PathIcon x:Name="Top" Data="M28.9951,13C29.5474,13,29.9951,13.4477,29.9951,14L29.9951,21.9805 19.0049,21.9805C17.9003,21.9805,17.0049,22.8759,17.0049,23.9805L17.0049,25 14,25C13.4478,25,13.0001,24.5522,13,24L13,14C13,13.4477,13.4477,13,14,13L28.9951,13z"><PathIcon.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="{ThemeResource SystemAccentColor}" Offset="0"/><GradientStop Color="{ThemeResource SystemAccentColorDark2}" Offset="1"/></LinearGradientBrush></PathIcon.Foreground></PathIcon><PathIcon x:Name="Bottom" Data="M34,23L19,23C18.4477,23,18,23.4477,18,24L18,34C18,34.5523,18.4477,35,19,35L34,35C34.5523,35,35,34.5523,35,34L35,24C35,23.4477,34.5523,23,34,23z"><PathIcon.Foreground><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="{ThemeResource SystemAccentColorLight2}" Offset="0"/><GradientStop Color="{ThemeResource SystemAccentColorDark1}" Offset="1"/></LinearGradientBrush></PathIcon.Foreground></PathIcon></Grid></Viewbox>
+  - startButtonRest=<Viewbox Width="48" Height="48" Stretch="None" IsHitTestVisible="False"> <Grid Margin="-16,-12,0,0" IsHitTestVisible="False"> <PathIcon x:Name="TopLeft" Data="M48,48z M0,0z M15,17.3784C14.9994,16.8893,15.3533,16.4753,15.8282,16.4092L22.7646,15.4453 22.7679,23.0889 15.0061,23.1339 15,17.3784z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="TopRight" Data="M48,48z M0,0z M23.7021,15.3043L32.355,14.0156C33.2215,13.8866,33.9986,14.5723,33.9986,15.4658L33.9986,22.992 23.7021,23.0753 23.7021,15.3043z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="BottomLeft" Data="M48,48z M0,0z M22.761,23.9693L22.7671,31.6196 15.8323,30.6467C15.3584,30.5801,15.0053,30.1669,15.0053,29.6787L15.0049,23.918 22.761,23.9693z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="BottomRight" Data="M48,48z M0,0z M33.9998,24.0416L33.9978,31.5347C33.9976,32.4254,33.2252,33.1099,32.361,32.9854L23.701,31.7381 23.6865,24.0244 33.9998,24.0416z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="0"/> <GradientStop Color="{ThemeResource TextFillColorSecondary}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> </Grid> </Viewbox>
+  - startButtonActive=<Viewbox Width="48" Height="48" Stretch="None" IsHitTestVisible="False"> <Grid Margin="-16,-12,0,0" IsHitTestVisible="False"> <PathIcon x:Name="TopLeft" Data="M48,48z M0,0z M15,17.3784C14.9994,16.8893,15.3533,16.4753,15.8282,16.4092L22.7646,15.4453 22.7679,23.0889 15.0061,23.1339 15,17.3784z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource SystemAccentColorLight1}" Offset="0"/> <GradientStop Color="{ThemeResource SystemAccentColor}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="TopRight" Data="M48,48z M0,0z M23.7021,15.3043L32.355,14.0156C33.2215,13.8866,33.9986,14.5723,33.9986,15.4658L33.9986,22.992 23.7021,23.0753 23.7021,15.3043z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource SystemAccentColorLight2}" Offset="0"/> <GradientStop Color="{ThemeResource SystemAccentColorLight1}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="BottomLeft" Data="M48,48z M0,0z M22.761,23.9693L22.7671,31.6196 15.8323,30.6467C15.3584,30.5801,15.0053,30.1669,15.0053,29.6787L15.0049,23.918 22.761,23.9693z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource SystemAccentColorDark1}" Offset="0"/> <GradientStop Color="{ThemeResource SystemAccentColorDark2}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> <PathIcon x:Name="BottomRight" Data="M48,48z M0,0z M33.9998,24.0416L33.9978,31.5347C33.9976,32.4254,33.2252,33.1099,32.361,32.9854L23.701,31.7381 23.6865,24.0244 33.9998,24.0416z"> <PathIcon.Foreground> <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"> <GradientStop Color="{ThemeResource SystemAccentColorLight1}" Offset="0"/> <GradientStop Color="{ThemeResource SystemAccentColor}" Offset="1"/> </LinearGradientBrush> </PathIcon.Foreground> </PathIcon> </Grid> </Viewbox>
+controlStyles:
+  - target: Taskbar.TaskbarFrame#TaskbarFrame > Grid#RootGrid > Taskbar.TaskbarBackground#BackgroundControl > Grid > Rectangle#BackgroundFill
+    styles:
+      - Fill:=$acrylic
+  - target: Border#OverflowFlyoutBackgroundBorder
+    styles:
+      - BorderThickness=0,1,0,0
+      - Background:=$acrylic
+      - BorderBrush:=$button
+      - CornerRadius=4
+      - BackgroundSizing=1
+  - target: JumpViewUI.SystemItemListViewItem > Grid#LayoutRoot > Border#BackgroundBorder
+    styles:
+      - FocusVisualPrimaryThickness=0
+      - FocusVisualSecondaryThickness=0
+  - target: SystemTray.OmniButton#NotificationCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent
+    styles:
+      - Margin=10,0,0,0
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent > Grid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock
+    styles:
+      - Margin=6,0,6,0
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent > Grid > SystemTray.AdaptiveTextBlock#Underlay > TextBlock#InnerTextBlock
+    styles:
+      - Opacity=0
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel
+    styles:
+      - Margin=-8,0,-8,0
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton
+    styles:
+      - CornerRadius=0
+      - FocusVisualPrimaryThickness=0
+      - FocusVisualSecondaryThickness=0
+      - BorderThickness=0
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel > Microsoft.UI.Xaml.Controls.AnimatedVisualPlayer#Icon
+    styles:
+      - Visibility=1
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel@CommonStates > Border#BackgroundElement
+    styles:
+      - Margin=-2,-5,-1,-5
+      - CornerRadius=0
+      - BorderThickness=0
+  - target: SystemTray.OmniButton#NotificationCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.DateTimeIconContent > Grid
+    styles:
+      - Margin=2,0,0,0
+  - target: Rectangle#BackgroundStroke
+    styles:
+      - Fill:=$button
+  - target: Border#BackgroundBorder
+    styles:
+      - Margin=0
+      - CornerRadius=0
+      - BorderThickness=0
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter > SystemTray.IconView#SystemTrayIcon > Grid > Grid > SystemTray.TextIconContent > Grid > SystemTray.AdaptiveTextBlock#Underlay > TextBlock#InnerTextBlock
+    styles:
+      - Opacity=0
+  - target: Grid#OverflowRootGrid > ItemsControl > ItemsPresenter > WrapGrid > ContentPresenter > SystemTray.NotifyIconView > Grid#ContainerGrid > Border#BackgroundBorder
+    styles:
+      - Margin=0
+  - target: Taskbar.TaskListLabeledButtonPanel > Border#BackgroundElement
+    styles:
+      - BorderThickness=0
+      - CornerRadius=0
+      - Margin=-2,-4,-2,-4
+      - FocusVisualPrimaryThickness=0
+      - FocusVisualSecondaryThickness=0
+  - target: Taskbar.TaskListLabeledButtonPanel > Rectangle#RunningIndicator
+    styles:
+      - Visibility=1
+      - Width=0
+      - Opacity=0
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter[1] > SystemTray.IconView > Grid > Grid > SystemTray.TextIconContent > Grid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock
+    styles:
+      - Margin=5,0,4,0
+      - Padding=2,0,0,0
+      - FontFamily=Segoe MDL2 Assets
+  - target: SystemTray.OmniButton#ControlCenterButton > Grid > ContentPresenter > ItemsPresenter > StackPanel > ContentPresenter[2] > SystemTray.IconView > Grid > Grid > SystemTray.TextIconContent > Grid > SystemTray.AdaptiveTextBlock#Base > TextBlock#InnerTextBlock
+    styles:
+      - FontFamily=Segoe MDL2 Assets
+      - Margin=-4,0,6,0
+  - target: SystemTray.Stack#ShowDesktopStack
+    styles:
+      - Visibility=1
+  - target: SystemTray.OmniButton#ControlCenterButton
+    styles:
+      - Margin=0,24,-50,0
+      - Height=24
+      - Width=49
+  - target: SystemTray.OmniButton#NotificationCenterButton
+    styles:
+      - Height=24
+      - Margin=0,0,0,24
+      - Width=49
+  - target: Taskbar.TaskListLabeledButtonPanel > Border#MultiWindowElement
+    styles:
+      - Visibility=1
+  - target: 'Taskbar.TaskListButton[AutomationProperties.AutomationId=Appid: Microsoft.Windows.Photos_8wekyb3d8bbwe!App] > Taskbar.TaskListLabeledButtonPanel > Image#Icon'
+    styles:
+      - Source:=https://raw.githubusercontent.com/Lockframe/Styler-Themes/refs/heads/main/icons/apps/photos-old.png
+      - Height=23
+      - Width=23
+  - target: 'Taskbar.TaskListButton[AutomationProperties.AutomationId=Appid: Microsoft.Windows.Explorer] > Taskbar.TaskListLabeledButtonPanel > Image#Icon'
+    styles:
+      - Source:=https://raw.githubusercontent.com/Lockframe/Styler-Themes/refs/heads/main/icons/apps/explorer-10X.png
+      - Height=24
+      - Width=24
+  - target: 'Taskbar.TaskListButton[AutomationProperties.AutomationId=Appid: Microsoft.WindowsStore_8wekyb3d8bbwe!App] > Taskbar.TaskListLabeledButtonPanel > Image#Icon'
+    styles:
+      - Source:=https://raw.githubusercontent.com/Lockframe/Styler-Themes/refs/heads/main/icons/apps/2020-store-l.png
+  - target: SystemTray.NotifyIconView#NotifyItemIcon[AutomationProperties.Name=Copilot] > Grid#ContainerGrid > ContentPresenter#ContentPresenter > Grid#ContentGrid > SystemTray.ImageIconContent > Grid > Image
+    styles:
+      - Opacity=0
+  - target: Taskbar.TaskbarBackground#HoverFlyoutBackgroundControl > Grid > Rectangle
+    styles:
+      - Fill:=$acrylic
+  - target: Taskbar.TaskItemThumbnailView > Grid > Border#BackgroundBorder
+    styles:
+      - Opacity=0
+  - target: Border#HoverFlyoutBackground
+    styles:
+      - CornerRadius=4
+      - BorderThickness=0
+  - target: Taskbar.TaskbarBackground#HoverFlyoutBackgroundControl
+    styles:
+      - CornerRadius=4
+  - target: Taskbar.TaskItemThumbnailView > Grid > Button#CloseButton > ContentPresenter@CommonStates
+    styles:
+      - CornerRadius=2
+      - BorderThickness=0
+      - Background:=transparent
+      - Background@PointerOver:=$buttonHover
+      - Background@Pressed:=$buttonHover
+      - Foreground:=$textPrimary
+  - target: MenuFlyoutPresenter
+    styles:
+      - BorderThickness=0,1,0,0
+      - BorderBrush:=$button
+      - CornerRadius=4
+      - BackgroundSizing=1
+  - target: MenuFlyoutItem > Grid#LayoutRoot > TextBlock#TextBlock
+    styles:
+      - FontFamily=Segoe UI
+      - Foreground:=$textPrimary
+  - target: MenuFlyoutSubItem > Grid#LayoutRoot > Grid > TextBlock#TextBlock
+    styles:
+      - FontFamily=Segoe UI
+      - Foreground:=$textPrimary
+  - target: MenuFlyoutItem > Grid#LayoutRoot
+    styles:
+      - CornerRadius=0
+      - Margin=-4,0,-4,0
+      - Padding=16,6,16,7
+  - target: MenuFlyoutSubItem > Grid#LayoutRoot
+    styles:
+      - CornerRadius=0
+      - Margin=-4,0,-4,0
+      - Padding=16,6,16,7
+  - target: Grid > Border#BackgroundBorder
+    styles:
+      - CornerRadius=4,4,9,9
+  - target: Button#SwitchItemElementCloseButton
+    styles:
+      - CornerRadius=2
+      - Height=32
+      - Width=40
+      - Margin=0,0,4,1
+  - target: Button#SwitchItemElementCloseButton > ContentPresenter@CommonStates
+    styles:
+      - Background@PointerOver:=$button
+      - Background:=#00000000
+      - Background@Pressed:=$buttonHover
+      - Foreground:=$textPrimary
+  - target: SystemTray.ChevronIconView > Grid > Border#BackgroundBorder
+    styles:
+      - CornerRadius=0
+  - target: SystemTray.NotifyIconView > Grid > Border#BackgroundBorder
+    styles:
+      - CornerRadius=0
+  - target: SystemTray.OmniButton > Grid > Border#BackgroundBorder
+    styles:
+      - CornerRadius=0
+  - target: SystemTray.OmniButton
+    styles:
+      - Foreground:=$textSecondary
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton] > Taskbar.TaskListButtonPanel@CommonStates > Border#BackgroundElement
+    styles:
+      - CornerRadius=0
+      - BorderThickness=0
+      - Margin=-1,-5,-1,-5
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton] > Taskbar.TaskListButtonPanel > Microsoft.UI.Xaml.Controls.AnimatedVisualPlayer#Icon
+    styles:
+      - Visibility=1
+  - target: TextBlock#DateInnerTextBlock
+    styles:
+      - Visibility=1
+  - target: TextBlock#TimeInnerTextBlock
+    styles:
+      - FontWeight=600
+  - target: Taskbar.TaskListLabeledButtonPanel@CommonStates > Border
+    styles:
+      - Opacity@ActiveNormal:=0
+      - Opacity@MultiWindowActive:=0
+  - target: WindowsInternal.ComposableShell.Experiences.Switcher.VirtualDesktopBarElement
+    styles:
+      - Visibility=1
+  - target: Taskbar.TaskItemThumbnailView > Grid
+    styles:
+      - BorderThickness=0,1,0,0
+      - BorderBrush:=$button
+      - BackgroundSizing=1
+      - CornerRadius=4,4,0,0
+  - target: Grid#ConfirmatorMainGrid
+    styles:
+      - Background:=$acrylic
+      - CornerRadius=4
+      - BorderThickness=0,1,0,0
+      - BorderBrush:=$button
+      - BackgroundSizing=1
+  - target: Rectangle#HorizontalTrackRect
+    styles:
+      - Height=3
+      - Fill:=<SolidColorBrush Color="{ThemeResource SurfaceStrokeColorDefault}"/>
+  - target: Rectangle#HorizontalDecreaseRect
+    styles:
+      - Fill:=$accent
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton] > Taskbar.TaskListButtonPanel@CommonStates > ContentPresenter
+    styles:
+      - Content:=$startButtonRest
+      - Content@ActiveNormal:=$startButtonActive
+      - Content@ActivePointerOver:=$startButtonActive
+      - Content@ActivePressed:=$startButtonActive
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton] > Taskbar.TaskListButtonPanel@CommonStates > ContentPresenter
+    styles:
+      - Content:=$taskViewRest
+      - Content@ActiveNormal:=$taskViewActive
+      - Content@ActivePointerOver:=$taskViewActive
+      - Content@ActivePressed:=$taskViewActive
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=StartButton]
+    styles:
+      - Margin=-49,0,0,0
+  - target: Taskbar.ExperienceToggleButton#LaunchListButton[AutomationProperties.AutomationId=TaskViewButton]
+    styles:
+      - Margin=-49,0,0,0
+themeResourceVariables:
+  - ''
+xamlDiagnosticsHandling: ''
