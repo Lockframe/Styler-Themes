@@ -2,7 +2,7 @@
 // @id              files-styler
 // @name            Files Styler
 // @description     Customize the Files app
-// @version         1.5
+// @version         1.5.1
 // @author          Lockframe
 // @include         Files.exe
 // @architecture    x86-64
@@ -719,7 +719,8 @@ void BuildRuleIndex() {
 }
 
 bool HasCustomizationRulesForType(PCWSTR type) {
-    if (!type || g_elementsCustomizationRules.empty()) return true;
+    if (!type || g_elementsCustomizationRules.empty()) return false;
+    if (!g_genericRules.empty()) return true;
     std::wstring_view typeView(type);
 
     auto it = g_typeMatchCache.find(typeView);
@@ -2128,12 +2129,20 @@ const PropertyValues& GetResolvedPropertyValues(
                 xaml += L"\" />\n";
             }
 
-            auto style = GetStyleFromXamlSetters(type, xaml);
+            auto style = GetStyleFromXamlSetters(type.empty() ? L"FrameworkElement" : type, xaml);
             for (size_t i = 0; i < propertyValuesStr.size(); i++) {
                 const auto setter = style.Setters().GetAt(i).as<Setter>();
                 propertyValues.push_back({setter.Property(), setter.Value()});
             }
         }
+    } catch (winrt::hresult_error const& ex) {
+        Wh_Log(L"Error %08X: %s", ex.code(), ex.message().c_str());
+        if (ex.code() == (HRESULT)0x802B000A) {
+            static const PropertyValues emptyValues;
+            return emptyValues;
+        }
+    } catch (std::exception const& ex) {
+        Wh_Log(L"Error: %S", ex.what());
     } catch (...) {}
 
     *propertyValuesMaybeUnresolved = std::move(propertyValues);
@@ -2610,10 +2619,19 @@ bool TestElementMatcher(FrameworkElement element,
                         ElementMatcher& matcher,
                         VisualStateGroup* visualStateGroup,
                         PCWSTR fallbackClassName) {
-    if (!matcher.type.empty() &&
-        matcher.type != winrt::get_class_name(element) &&
-        (!fallbackClassName || matcher.type != fallbackClassName)) {
-        return false;
+    if (!matcher.type.empty()) {
+        bool typeMatches = false;
+        if (fallbackClassName && matcher.type == fallbackClassName) {
+            typeMatches = true;
+        } else {
+            winrt::hstring runtimeClassName = winrt::get_class_name(element);
+            if (matcher.type == runtimeClassName) {
+                typeMatches = true;
+            }
+        }
+        if (!typeMatches) {
+            return false;
+        }
     }
 
     if (!matcher.name.empty() && matcher.name != element.Name()) {
@@ -2626,6 +2644,65 @@ bool TestElementMatcher(FrameworkElement element,
         int index = matcher.oneBasedIndex - 1;
         if (index < 0 || index >= Media::VisualTreeHelper::GetChildrenCount(parent) ||
             Media::VisualTreeHelper::GetChild(parent, index) != element) {
+            return false;
+        }
+    }
+
+    const auto& propertyValues =
+        GetResolvedPropertyValues(matcher.type, &matcher.propertyValues);
+    if (!propertyValues.empty()) {
+        auto elementDo = element.as<DependencyObject>();
+
+        for (const auto& propertyValue : propertyValues) {
+            const auto value =
+                ReadLocalValueWithWorkaround(elementDo, propertyValue.first);
+            if (!value) {
+                Wh_Log(L"Null property value");
+                return false;
+            }
+
+            const auto className = winrt::get_class_name(value);
+            const auto expectedClassName =
+                winrt::get_class_name(propertyValue.second);
+            if (className != expectedClassName) {
+                Wh_Log(L"Different property class: %s vs. %s", className.c_str(),
+                       expectedClassName.c_str());
+                return false;
+            }
+
+            if (className == L"Windows.Foundation.IReference`1<String>") {
+                if (winrt::unbox_value<winrt::hstring>(propertyValue.second) ==
+                    winrt::unbox_value<winrt::hstring>(value)) {
+                    continue;
+                }
+                return false;
+            }
+
+            if (className == L"Windows.Foundation.IReference`1<Double>") {
+                if (winrt::unbox_value<double>(propertyValue.second) ==
+                    winrt::unbox_value<double>(value)) {
+                    continue;
+                }
+                return false;
+            }
+
+            if (className == L"Windows.Foundation.IReference`1<Boolean>") {
+                if (winrt::unbox_value<bool>(propertyValue.second) ==
+                    winrt::unbox_value<bool>(value)) {
+                    continue;
+                }
+                return false;
+            }
+
+            if (className == L"Windows.Foundation.IReference`1<Int32>") {
+                if (winrt::unbox_value<int32_t>(propertyValue.second) ==
+                    winrt::unbox_value<int32_t>(value)) {
+                    continue;
+                }
+                return false;
+            }
+
+            Wh_Log(L"Unsupported property class: %s", className.c_str());
             return false;
         }
     }
@@ -2653,22 +2730,26 @@ ElementResolvedRules FindElementPropertyOverrides(FrameworkElement element,
     candidateRules.reserve(g_genericRules.size() + 16);
     candidateRules.insert(candidateRules.end(), g_genericRules.begin(), g_genericRules.end());
 
-    std::wstring className = winrt::get_class_name(element).c_str();
-    if (auto it = g_rulesByTypeMap.find(className); it != g_rulesByTypeMap.end()) {
-        candidateRules.insert(candidateRules.end(), it->second.begin(), it->second.end());
-    }
-
-    if (auto pos = className.rfind(L'.'); pos != className.npos) {
-        std::wstring_view shortName = std::wstring_view(className).substr(pos + 1);
-        if (auto it = g_rulesByTypeMap.find(shortName); it != g_rulesByTypeMap.end()) {
+    auto addRulesForType = [&](std::wstring_view typeName) {
+        if (auto it = g_rulesByTypeMap.find(typeName); it != g_rulesByTypeMap.end()) {
             candidateRules.insert(candidateRules.end(), it->second.begin(), it->second.end());
         }
-    }
+        if (auto pos = typeName.rfind(L'.'); pos != typeName.npos) {
+            std::wstring_view shortName = typeName.substr(pos + 1);
+            if (auto it = g_rulesByTypeMap.find(shortName); it != g_rulesByTypeMap.end()) {
+                candidateRules.insert(candidateRules.end(), it->second.begin(), it->second.end());
+            }
+        }
+    };
 
     if (fallbackClassName) {
-        if (auto it = g_rulesByTypeMap.find(fallbackClassName); it != g_rulesByTypeMap.end()) {
-            candidateRules.insert(candidateRules.end(), it->second.begin(), it->second.end());
-        }
+        addRulesForType(fallbackClassName);
+    }
+
+    winrt::hstring runtimeClassName;
+    if (!fallbackClassName || std::wstring_view(fallbackClassName).find(L"IUIElementOverrides") != std::wstring_view::npos) {
+        runtimeClassName = winrt::get_class_name(element);
+        addRulesForType(runtimeClassName);
     }
 
     std::unordered_set<const ElementCustomizationRules*> seenRules;
